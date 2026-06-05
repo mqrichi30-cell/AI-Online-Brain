@@ -1,0 +1,1096 @@
+{
+    "name": "4a1d8296-03da-4fd3-8369-2f1c2af63b41",
+    "id": "/providers/Microsoft.Flow/flows/4a1d8296-03da-4fd3-8369-2f1c2af63b41",
+    "type": "Microsoft.Flow/flows",
+    "properties": {
+        "apiId": "/providers/Microsoft.PowerApps/apis/shared_logicflows",
+        "displayName": "WAKEFERN - APPT - 01 Process Appointment",
+        "definition": {
+            "metadata": {
+                "workflowEntityId": null,
+                "processAdvisorMetadata": null,
+                "flowChargedByPaygo": null,
+                "flowclientsuspensionreason": "None",
+                "flowclientsuspensiontime": null,
+                "flowclientsuspensionreasondetails": "",
+                "creator": {
+                    "id": "1c668200-eb84-4a2c-b156-b40c8a34eabe",
+                    "type": "User",
+                    "tenantId": "3596192b-fdf5-4e2c-a6fa-acb706c963d8"
+                },
+                "provisioningMethod": "FromDefinition",
+                "failureAlertSubscription": true,
+                "clientLastModifiedTime": "2026-06-04T17:12:07.7339167Z",
+                "connectionKeySavedTimeKey": "2026-05-19T17:11:17.8376003Z",
+                "creationSource": null,
+                "modifiedSources": "Portal"
+            },
+            "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+            "contentVersion": "1.0.0.0",
+            "parameters": {
+                "$authentication": {
+                    "defaultValue": {},
+                    "type": "SecureObject"
+                },
+                "$connections": {
+                    "defaultValue": {},
+                    "type": "Object"
+                }
+            },
+            "triggers": {
+                "When_a_new_email_arrives_(V3)": {
+                    "metadata": {
+                        "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAYFina4AAA=": "Marín, Cristhofer - AWG + Wakefern"
+                    },
+                    "type": "OpenApiConnectionNotification",
+                    "inputs": {
+                        "parameters": {
+                            "includeAttachments": false,
+                            "fetchOnlyWithAttachment": false,
+                            "folderPath": "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAYFina4AAA="
+                        },
+                        "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                            "connectionName": "shared_office365",
+                            "operationId": "OnNewEmailV3"
+                        },
+                        "authentication": "@parameters('$authentication')"
+                    },
+                    "conditions": [],
+                    "runtimeConfiguration": {
+                        "concurrency": {
+                            "runs": 1
+                        }
+                    }
+                }
+            },
+            "actions": {
+                "WAKEFERN_-_APPT_-_01_Valid_Subject": {
+                    "actions": {
+                        "DEBUG_TriggerItem": {
+                            "type": "Compose",
+                            "inputs": "@string(first(triggerOutputs()?['body/value']))"
+                        },
+                        "WAKEFERN_-_APPT_-_01_Is_Mark_Reply": {
+                            "runAfter": {
+                                "DEBUG_TriggerItem": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "If",
+                            "expression": {
+                                "and": [
+                                    {
+                                        "equals": [
+                                            "@and(\r\n  or(\r\n    startsWith(coalesce(first(triggerOutputs()?['body/value'])?['subject'], ''), 'RE:'),\r\n    startsWith(coalesce(first(triggerOutputs()?['body/value'])?['subject'], ''), 'FW:')\r\n  ),\r\n  contains(toLower(coalesce(first(triggerOutputs()?['body/value'])?['from'], '')), 'mark.kielczynski@wakefern.com')\r\n)",
+                                            "@true"
+                                        ]
+                                    }
+                                ]
+                            },
+                            "actions": {
+                                "MARK_-_APPT_-_01_Html_to_Text": {
+                                    "type": "OpenApiConnection",
+                                    "inputs": {
+                                        "parameters": {
+                                            "Content": "<p class=\"editor-paragraph\">@{first(triggerOutputs()?['body/value'])?['body']}</p>"
+                                        },
+                                        "host": {
+                                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_conversionservice",
+                                            "connectionName": "shared_conversionservice",
+                                            "operationId": "HtmlToText"
+                                        },
+                                        "authentication": "@parameters('$authentication')"
+                                    }
+                                },
+                                "MARK_-_APPT_-_01_Body_Lines": {
+                                    "runAfter": {
+                                        "MARK_-_APPT_-_01_Html_to_Text": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "type": "Compose",
+                                    "inputs": "@split(body('MARK_-_APPT_-_01_Html_to_Text'), decodeUriComponent('%0A'))"
+                                },
+                                "MARK_-_APPT_-_01_List_Template_Rows": {
+                                    "runAfter": {
+                                        "MARK_-_APPT_-_01_Body_Lines": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "metadata": {
+                                        "016QGDYJA3LP5NS57RGVC23YPVTT7HGHRH": "/General/Customer Documents/Wakefern/Changes DT.xlsx",
+                                        "tableId": "{4EAE7FF9-E21A-482C-AE75-CD3AF104EF0E}"
+                                    },
+                                    "type": "OpenApiConnection",
+                                    "inputs": {
+                                        "parameters": {
+                                            "source": "groups/e8be79ff-3e86-4989-b938-5aa03efc90e9",
+                                            "drive": "b!QNoqtQQKEkKt1J9dUatHQLti2oNp2flGoIi9gsYRIe8ef7acQlFhR7H2v-R3yf8Z",
+                                            "file": "016QGDYJA3LP5NS57RGVC23YPVTT7HGHRH",
+                                            "table": "{4EAE7FF9-E21A-482C-AE75-CD3AF104EF0E}"
+                                        },
+                                        "host": {
+                                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
+                                            "connectionName": "shared_excelonlinebusiness",
+                                            "operationId": "GetItems"
+                                        },
+                                        "authentication": "@parameters('$authentication')"
+                                    }
+                                },
+                                "MARK_-_APPT_-_01_Clear_Template_Rows": {
+                                    "foreach": "@outputs('MARK_-_APPT_-_01_List_Template_Rows')?['body/value']",
+                                    "runAfter": {
+                                        "MARK_-_APPT_-_01_List_Template_Rows": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "type": "Foreach",
+                                    "actions": {
+                                        "MARK_-_APPT_-_01_Delete_Row": {
+                                            "metadata": {
+                                                "016QGDYJA3LP5NS57RGVC23YPVTT7HGHRH": "/General/Customer Documents/Wakefern/Changes DT.xlsx",
+                                                "tableId": "{4EAE7FF9-E21A-482C-AE75-CD3AF104EF0E}"
+                                            },
+                                            "type": "OpenApiConnection",
+                                            "inputs": {
+                                                "parameters": {
+                                                    "source": "groups/e8be79ff-3e86-4989-b938-5aa03efc90e9",
+                                                    "drive": "b!QNoqtQQKEkKt1J9dUatHQLti2oNp2flGoIi9gsYRIe8ef7acQlFhR7H2v-R3yf8Z",
+                                                    "file": "016QGDYJA3LP5NS57RGVC23YPVTT7HGHRH",
+                                                    "table": "{4EAE7FF9-E21A-482C-AE75-CD3AF104EF0E}",
+                                                    "idColumn": "PO_NUMBER",
+                                                    "id": "@item()?['PO_NUMBER']"
+                                                },
+                                                "host": {
+                                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
+                                                    "connectionName": "shared_excelonlinebusiness",
+                                                    "operationId": "DeleteItem"
+                                                },
+                                                "authentication": "@parameters('$authentication')"
+                                            }
+                                        }
+                                    }
+                                },
+                                "MARK_-_APPT_-_01_Process_Mark_Lines": {
+                                    "foreach": "@outputs('MARK_-_APPT_-_01_Body_Lines')",
+                                    "runAfter": {
+                                        "MARK_-_APPT_-_01_Clear_Template_Rows": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "type": "Foreach",
+                                    "actions": {
+                                        "MARK_-_APPT_-_01_Is_PO_Line": {
+                                            "type": "If",
+                                            "expression": {
+                                                "and": [
+                                                    {
+                                                        "contains": [
+                                                            "@item()",
+                                                            "PROCTER & GAMBLE"
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            "actions": {
+                                                "MARK_-_APPT_-_01_PO_Part": {
+                                                    "type": "Compose",
+                                                    "inputs": "@trim(first(split(item(), 'PROCTER & GAMBLE')))"
+                                                },
+                                                "MARK_-_APPT_-_01_Dates_Part": {
+                                                    "runAfter": {
+                                                        "MARK_-_APPT_-_01_PO_Part": [
+                                                            "Succeeded"
+                                                        ]
+                                                    },
+                                                    "type": "Compose",
+                                                    "inputs": "@trim(last(split(item(), 'PROCTER & GAMBLE')))"
+                                                },
+                                                "MARK_-_APPT_-_01_PO_Tokens": {
+                                                    "runAfter": {
+                                                        "MARK_-_APPT_-_01_PO_Part": [
+                                                            "Succeeded"
+                                                        ]
+                                                    },
+                                                    "type": "Compose",
+                                                    "inputs": "@split(outputs('MARK_-_APPT_-_01_PO_Part'), ' ')"
+                                                },
+                                                "MARK_-_APPT_-_01_Dates_Tokens": {
+                                                    "runAfter": {
+                                                        "MARK_-_APPT_-_01_Dates_Part": [
+                                                            "Succeeded"
+                                                        ]
+                                                    },
+                                                    "type": "Compose",
+                                                    "inputs": "@split(outputs('MARK_-_APPT_-_01_Dates_Part'), ' ')"
+                                                },
+                                                "MARK_-_APPT_-_01_Compute_Hour": {
+                                                    "runAfter": {
+                                                        "MARK_-_APPT_-_01_Dates_Tokens": [
+                                                            "Succeeded"
+                                                        ]
+                                                    },
+                                                    "type": "Compose",
+                                                    "inputs": "@if(\r\n  and(\r\n    equals(toUpper(trim(outputs('MARK_-_APPT_-_01_Dates_Tokens')[8])), 'P'),\r\n    not(equals(trim(outputs('MARK_-_APPT_-_01_Dates_Tokens')[6]), '12'))\r\n  ),\r\n  string(add(int(trim(outputs('MARK_-_APPT_-_01_Dates_Tokens')[6])), 12)),\r\n  if(\r\n    and(\r\n      equals(toUpper(trim(outputs('MARK_-_APPT_-_01_Dates_Tokens')[8])), 'A'),\r\n      equals(trim(outputs('MARK_-_APPT_-_01_Dates_Tokens')[6]), '12')\r\n    ),\r\n    '00',\r\n    if(\r\n      less(int(trim(outputs('MARK_-_APPT_-_01_Dates_Tokens')[6])), 10),\r\n      concat('0', trim(outputs('MARK_-_APPT_-_01_Dates_Tokens')[6])),\r\n      trim(outputs('MARK_-_APPT_-_01_Dates_Tokens')[6])\r\n    )\r\n  )\r\n)"
+                                                },
+                                                "MARK_-_APPT_-_01_Add_Mark_PO_Row": {
+                                                    "runAfter": {
+                                                        "MARK_-_APPT_-_01_Compute_Hour": [
+                                                            "Succeeded"
+                                                        ],
+                                                        "MARK_-_APPT_-_01_PO_Tokens": [
+                                                            "Succeeded"
+                                                        ]
+                                                    },
+                                                    "metadata": {
+                                                        "016QGDYJA3LP5NS57RGVC23YPVTT7HGHRH": "/General/Customer Documents/Wakefern/Changes DT.xlsx",
+                                                        "tableId": "{4EAE7FF9-E21A-482C-AE75-CD3AF104EF0E}"
+                                                    },
+                                                    "type": "OpenApiConnection",
+                                                    "inputs": {
+                                                        "parameters": {
+                                                            "source": "groups/e8be79ff-3e86-4989-b938-5aa03efc90e9",
+                                                            "drive": "b!QNoqtQQKEkKt1J9dUatHQLti2oNp2flGoIi9gsYRIe8ef7acQlFhR7H2v-R3yf8Z",
+                                                            "file": "016QGDYJA3LP5NS57RGVC23YPVTT7HGHRH",
+                                                            "table": "{4EAE7FF9-E21A-482C-AE75-CD3AF104EF0E}",
+                                                            "item/PO_NUMBER": "@substring(trim(outputs('MARK_-_APPT_-_01_PO_Tokens')[0]), 1, sub(length(trim(outputs('MARK_-_APPT_-_01_PO_Tokens')[0])), 1))",
+                                                            "item/SCHED_DATE": "@concat(outputs('MARK_-_APPT_-_01_Dates_Tokens')[3], '/', outputs('MARK_-_APPT_-_01_Dates_Tokens')[4], '/20', outputs('MARK_-_APPT_-_01_Dates_Tokens')[5])",
+                                                            "item/SCHED_TIME": "@concat(outputs('MARK_-_APPT_-_01_Compute_Hour'), ':', if(less(int(trim(outputs('MARK_-_APPT_-_01_Dates_Tokens')[7])), 10), concat('0', trim(outputs('MARK_-_APPT_-_01_Dates_Tokens')[7])), trim(outputs('MARK_-_APPT_-_01_Dates_Tokens')[7])), ':00')"
+                                                        },
+                                                        "host": {
+                                                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
+                                                            "connectionName": "shared_excelonlinebusiness",
+                                                            "operationId": "AddRowV2"
+                                                        },
+                                                        "authentication": "@parameters('$authentication')"
+                                                    }
+                                                }
+                                            },
+                                            "else": {
+                                                "actions": {}
+                                            }
+                                        }
+                                    }
+                                },
+                                "MARK_-_APPT_-_01_Get_Updated_Template_Content": {
+                                    "runAfter": {
+                                        "MARK_-_APPT_-_01_Process_Mark_Lines": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "metadata": {
+                                        "%252fShared%2bDocuments%252fGeneral%252fCustomer%2bDocuments%252fWakefern%252fChanges%2bDT.xlsx": "/Shared Documents/General/Customer Documents/Wakefern/Changes DT.xlsx"
+                                    },
+                                    "type": "OpenApiConnection",
+                                    "inputs": {
+                                        "parameters": {
+                                            "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+                                            "id": "%252fShared%2bDocuments%252fGeneral%252fCustomer%2bDocuments%252fWakefern%252fChanges%2bDT.xlsx",
+                                            "inferContentType": true
+                                        },
+                                        "host": {
+                                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                                            "connectionName": "shared_sharepointonline",
+                                            "operationId": "GetFileContent"
+                                        },
+                                        "authentication": "@parameters('$authentication')"
+                                    }
+                                },
+                                "MARK_-_APPT_-_01_Send_Changes_DT_to_OSS": {
+                                    "runAfter": {
+                                        "MARK_-_APPT_-_01_Get_Updated_Template_Content": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "type": "OpenApiConnection",
+                                    "inputs": {
+                                        "parameters": {
+                                            "emailMessage/To": "nacsoshared.im@pg.com",
+                                            "emailMessage/Subject": "RPA EMAIL REQUEST TO CHANGES",
+                                            "emailMessage/Body": "<p class=\"editor-paragraph\">Please find attached the updated appointment load file.<br><br>Regards,<br>pgcustservw2.im@pg.com<br>NA Order Management | Regional</p>",
+                                            "emailMessage/Attachments": [
+                                                {
+                                                    "Name": "Changes DT.xlsx",
+                                                    "ContentBytes": "@body('MARK_-_APPT_-_01_Get_Updated_Template_Content')"
+                                                }
+                                            ],
+                                            "emailMessage/Importance": "Normal"
+                                        },
+                                        "host": {
+                                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                            "connectionName": "shared_office365",
+                                            "operationId": "SendEmailV2"
+                                        },
+                                        "authentication": "@parameters('$authentication')"
+                                    }
+                                },
+                                "MARK_-_APPT_-_01_Mark_As_Read": {
+                                    "runAfter": {
+                                        "MARK_-_APPT_-_01_Send_Changes_DT_to_OSS": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "type": "OpenApiConnection",
+                                    "inputs": {
+                                        "parameters": {
+                                            "Uri": "@concat('https://graph.microsoft.com/v1.0/me/messages/', first(triggerOutputs()?['body/value'])?['id'])",
+                                            "Method": "PATCH",
+                                            "Body": "{\"isRead\": true}",
+                                            "ContentType": "application/json"
+                                        },
+                                        "host": {
+                                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                            "connectionName": "shared_office365",
+                                            "operationId": "HttpRequest"
+                                        },
+                                        "authentication": "@parameters('$authentication')"
+                                    }
+                                },
+                                "MARK_-_APPT_-_01_Add_Category_RPA": {
+                                    "runAfter": {
+                                        "MARK_-_APPT_-_01_Mark_As_Read": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "type": "OpenApiConnection",
+                                    "inputs": {
+                                        "parameters": {
+                                            "Uri": "@concat('https://graph.microsoft.com/v1.0/me/messages/', first(triggerOutputs()?['body/value'])?['id'])",
+                                            "Method": "PATCH",
+                                            "Body": "{\"categories\": [\"RPA\", \"Follow up\"]}",
+                                            "ContentType": "application/json"
+                                        },
+                                        "host": {
+                                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                            "connectionName": "shared_office365",
+                                            "operationId": "HttpRequest"
+                                        },
+                                        "authentication": "@parameters('$authentication')"
+                                    }
+                                },
+                                "MARK_-_APPT_-_01_Move_To_Complete": {
+                                    "runAfter": {
+                                        "MARK_-_APPT_-_01_Add_Category_RPA": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "type": "OpenApiConnection",
+                                    "inputs": {
+                                        "parameters": {
+                                            "Uri": "@concat('https://graph.microsoft.com/v1.0/me/messages/', first(triggerOutputs()?['body/value'])?['id'], '/move')",
+                                            "Method": "POST",
+                                            "Body": "{\"destinationId\": \"0000000094146C3E4B45EA44AE62779D3EE35E9001008931ADF43A87D94AB7194A4B87F98E90000493A9A8F30000\"}",
+                                            "ContentType": "application/json"
+                                        },
+                                        "host": {
+                                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                            "connectionName": "shared_office365",
+                                            "operationId": "HttpRequest"
+                                        },
+                                        "authentication": "@parameters('$authentication')"
+                                    }
+                                }
+                            },
+                            "else": {
+                                "actions": {
+                                    "WAKEFERN_-_APPT_-_01_Html_to_Text": {
+                                        "type": "OpenApiConnection",
+                                        "inputs": {
+                                            "parameters": {
+                                                "Content": "<p class=\"editor-paragraph\">@{first(triggerOutputs()?['body/value'])?['body']}</p>"
+                                            },
+                                            "host": {
+                                                "apiId": "/providers/Microsoft.PowerApps/apis/shared_conversionservice",
+                                                "connectionName": "shared_conversionservice",
+                                                "operationId": "HtmlToText"
+                                            },
+                                            "authentication": "@parameters('$authentication')"
+                                        },
+                                        "runAfter": {}
+                                    },
+                                    "WAKEFERN_-_APPT_-_01_Email_HTML_Body": {
+                                        "runAfter": {
+                                            "WAKEFERN_-_APPT_-_01_Html_to_Text": [
+                                                "Succeeded"
+                                            ]
+                                        },
+                                        "type": "Compose",
+                                        "inputs": "@coalesce(\r\n  first(triggerOutputs()?['body/value'])?['body'],\r\n  first(triggerOutputs()?['body/value'])?['body'],\r\n  ''\r\n)"
+                                    },
+                                    "WAKEFERN_-_APPT_-_01_Extract_First_Table": {
+                                        "runAfter": {
+                                            "WAKEFERN_-_APPT_-_01_Email_HTML_Body": [
+                                                "Succeeded"
+                                            ]
+                                        },
+                                        "type": "Compose",
+                                        "inputs": "@concat(\r\n  '<table',\r\n  first(\r\n    split(\r\n      first(\r\n        skip(\r\n          split(coalesce(outputs('WAKEFERN_-_APPT_-_01_Email_HTML_Body'), ''), '<table'),\r\n          1\r\n        )\r\n      ),\r\n      '</table>'\r\n    )\r\n  ),\r\n  '</table>'\r\n)"
+                                    },
+                                    "WAKEFERN_-_APPT_-_01_Extract_Table_Rows": {
+                                        "runAfter": {
+                                            "WAKEFERN_-_APPT_-_01_Extract_First_Table": [
+                                                "Succeeded"
+                                            ]
+                                        },
+                                        "type": "Compose",
+                                        "inputs": "@skip(\r\n  split(outputs('WAKEFERN_-_APPT_-_01_Extract_First_Table'), '<tr'),\r\n  2\r\n)"
+                                    },
+                                    "WAKEFERN_-_APPT_-_01_Has_Second_Table": {
+                                        "runAfter": {
+                                            "WAKEFERN_-_APPT_-_01_Extract_Table_Rows": [
+                                                "Succeeded"
+                                            ]
+                                        },
+                                        "type": "Compose",
+                                        "inputs": "@greaterOrEquals(\r\n  length(split(outputs('WAKEFERN_-_APPT_-_01_Email_HTML_Body'), '<table')),\r\n  3\r\n)"
+                                    },
+                                    "WAKEFERN_-_APPT_-_01_Extract_Second_Table": {
+                                        "runAfter": {
+                                            "WAKEFERN_-_APPT_-_01_Has_Second_Table": [
+                                                "Succeeded"
+                                            ]
+                                        },
+                                        "type": "Compose",
+                                        "inputs": "@if(\r\n  equals(outputs('WAKEFERN_-_APPT_-_01_Has_Second_Table'), true),\r\n  concat(\r\n    '<table',\r\n    first(\r\n      split(\r\n        first(\r\n          skip(\r\n            split(coalesce(outputs('WAKEFERN_-_APPT_-_01_Email_HTML_Body'), ''), '<table'),\r\n            2\r\n          )\r\n        ),\r\n        '</table>'\r\n      )\r\n    ),\r\n    '</table>'\r\n  ),\r\n  ''\r\n)"
+                                    },
+                                    "WAKEFERN_-_APPT_-_01_Has_Delivery_Time": {
+                                        "actions": {
+                                            "WAKEFERN_-_APPT_-_01_List_Template_Rows": {
+                                                "metadata": {
+                                                    "016QGDYJA3LP5NS57RGVC23YPVTT7HGHRH": "/General/Customer Documents/Wakefern/Changes DT.xlsx",
+                                                    "tableId": "{4EAE7FF9-E21A-482C-AE75-CD3AF104EF0E}"
+                                                },
+                                                "type": "OpenApiConnection",
+                                                "inputs": {
+                                                    "parameters": {
+                                                        "source": "groups/e8be79ff-3e86-4989-b938-5aa03efc90e9",
+                                                        "drive": "b!QNoqtQQKEkKt1J9dUatHQLti2oNp2flGoIi9gsYRIe8ef7acQlFhR7H2v-R3yf8Z",
+                                                        "file": "016QGDYJA3LP5NS57RGVC23YPVTT7HGHRH",
+                                                        "table": "{4EAE7FF9-E21A-482C-AE75-CD3AF104EF0E}"
+                                                    },
+                                                    "host": {
+                                                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
+                                                        "connectionName": "shared_excelonlinebusiness",
+                                                        "operationId": "GetItems"
+                                                    },
+                                                    "authentication": "@parameters('$authentication')"
+                                                }
+                                            },
+                                            "WAKEFERN_-_APPT_-_01_Clear_Template_Rows": {
+                                                "foreach": "@outputs('WAKEFERN_-_APPT_-_01_List_Template_Rows')?['body/value']",
+                                                "actions": {
+                                                    "Delete_a_row": {
+                                                        "metadata": {
+                                                            "016QGDYJA3LP5NS57RGVC23YPVTT7HGHRH": "/General/Customer Documents/Wakefern/Changes DT.xlsx",
+                                                            "tableId": "{4EAE7FF9-E21A-482C-AE75-CD3AF104EF0E}"
+                                                        },
+                                                        "type": "OpenApiConnection",
+                                                        "inputs": {
+                                                            "parameters": {
+                                                                "source": "groups/e8be79ff-3e86-4989-b938-5aa03efc90e9",
+                                                                "drive": "b!QNoqtQQKEkKt1J9dUatHQLti2oNp2flGoIi9gsYRIe8ef7acQlFhR7H2v-R3yf8Z",
+                                                                "file": "016QGDYJA3LP5NS57RGVC23YPVTT7HGHRH",
+                                                                "table": "{4EAE7FF9-E21A-482C-AE75-CD3AF104EF0E}",
+                                                                "idColumn": "PO_NUMBER",
+                                                                "id": "@item()?['PO_NUMBER']"
+                                                            },
+                                                            "host": {
+                                                                "apiId": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
+                                                                "connectionName": "shared_excelonlinebusiness",
+                                                                "operationId": "DeleteItem"
+                                                            },
+                                                            "authentication": "@parameters('$authentication')"
+                                                        }
+                                                    }
+                                                },
+                                                "runAfter": {
+                                                    "WAKEFERN_-_APPT_-_01_List_Template_Rows": [
+                                                        "Succeeded"
+                                                    ]
+                                                },
+                                                "type": "Foreach"
+                                            },
+                                            "WAKEFERN_-_APPT_-_01_Process_Email_Rows": {
+                                                "foreach": "@outputs('WAKEFERN_-_APPT_-_01_Extract_Table_Rows')",
+                                                "actions": {
+                                                    "WAKEFERN_-_APPT_-_01_Current_Row_Html_to_Text": {
+                                                        "type": "OpenApiConnection",
+                                                        "inputs": {
+                                                            "parameters": {
+                                                                "Content": "concat('<table></table>')"
+                                                            },
+                                                            "host": {
+                                                                "apiId": "/providers/Microsoft.PowerApps/apis/shared_conversionservice",
+                                                                "connectionName": "shared_conversionservice",
+                                                                "operationId": "HtmlToText"
+                                                            },
+                                                            "authentication": "@parameters('$authentication')"
+                                                        }
+                                                    },
+                                                    "WAKEFERN_-_APPT_-_01_Current_Row_Text": {
+                                                        "runAfter": {
+                                                            "WAKEFERN_-_APPT_-_01_Current_Row_Html_to_Text": [
+                                                                "Succeeded"
+                                                            ]
+                                                        },
+                                                        "type": "Compose",
+                                                        "inputs": "@trim(\r\n  replace(\r\n    replace(\r\n      body('WAKEFERN_-_APPT_-_01_Current_Row_Html_to_Text'),\r\n      decodeUriComponent('%0D'),\r\n      ''\r\n    ),\r\n    decodeUriComponent('%C2%A0'),\r\n    ' '\r\n  )\r\n)"
+                                                    },
+                                                    "WAKEFERN_-_APPT_-_01_Row_Columns": {
+                                                        "runAfter": {
+                                                            "WAKEFERN_-_APPT_-_01_Current_Row_Text": [
+                                                                "Succeeded"
+                                                            ]
+                                                        },
+                                                        "type": "Compose",
+                                                        "inputs": "@split(\r\n  outputs('WAKEFERN_-_APPT_-_01_Current_Row_Text'),\r\n  decodeUriComponent('%0A')\r\n)"
+                                                    },
+                                                    "WAKEFERN_-_APPT_-_01_Valid_Data_Row": {
+                                                        "actions": {
+                                                            "WAKEFERN_-_APPT_-_01_Add_Main_PO_Row": {
+                                                                "metadata": {
+                                                                    "016QGDYJA3LP5NS57RGVC23YPVTT7HGHRH": "/General/Customer Documents/Wakefern/Changes DT.xlsx",
+                                                                    "tableId": "{4EAE7FF9-E21A-482C-AE75-CD3AF104EF0E}"
+                                                                },
+                                                                "type": "OpenApiConnection",
+                                                                "inputs": {
+                                                                    "parameters": {
+                                                                        "source": "groups/e8be79ff-3e86-4989-b938-5aa03efc90e9",
+                                                                        "drive": "b!QNoqtQQKEkKt1J9dUatHQLti2oNp2flGoIi9gsYRIe8ef7acQlFhR7H2v-R3yf8Z",
+                                                                        "file": "016QGDYJA3LP5NS57RGVC23YPVTT7HGHRH",
+                                                                        "table": "{4EAE7FF9-E21A-482C-AE75-CD3AF104EF0E}",
+                                                                        "item/SCHED_DATE": "@trim(outputs('WAKEFERN_-_APPT_-_01_Row_Columns')[4])",
+                                                                        "item/SCHED_TIME": "@concat(\r\n  substring(trim(outputs('WAKEFERN_-_APPT_-_01_Row_Columns')[3]),0,2),\r\n  ':',\r\n  substring(trim(outputs('WAKEFERN_-_APPT_-_01_Row_Columns')[3]),2,2),\r\n  ':',\r\n  substring(trim(outputs('WAKEFERN_-_APPT_-_01_Row_Columns')[3]),4,2)\r\n)",
+                                                                        "item/PO_NUMBER": "@substring(\r\n  trim(outputs('WAKEFERN_-_APPT_-_01_Row_Columns')[2]),\r\n  1,\r\n  sub(length(trim(outputs('WAKEFERN_-_APPT_-_01_Row_Columns')[2])),1)\r\n)"
+                                                                    },
+                                                                    "host": {
+                                                                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
+                                                                        "connectionName": "shared_excelonlinebusiness",
+                                                                        "operationId": "AddRowV2"
+                                                                    },
+                                                                    "authentication": "@parameters('$authentication')"
+                                                                }
+                                                            },
+                                                            "WAKEFERN_-_APPT_-_01_Has_Ship_With_POs": {
+                                                                "actions": {
+                                                                    "WAKEFERN_-_APPT_-_01_Split_Ship_With_POs": {
+                                                                        "type": "Compose",
+                                                                        "inputs": "@split(\r\n  trim(outputs('WAKEFERN_-_APPT_-_01_Row_Columns')[3]),\r\n  '/'\r\n)"
+                                                                    },
+                                                                    "WAKEFERN_-_APPT_-_01_Add_Ship_With_POs": {
+                                                                        "foreach": "@outputs('WAKEFERN_-_APPT_-_01_Split_Ship_With_POs')",
+                                                                        "actions": {
+                                                                            "WAKEFERN_-_APPT_-_01_Add_Ship_With_PO_Row": {
+                                                                                "metadata": {
+                                                                                    "016QGDYJA3LP5NS57RGVC23YPVTT7HGHRH": "/General/Customer Documents/Wakefern/Changes DT.xlsx",
+                                                                                    "tableId": "{4EAE7FF9-E21A-482C-AE75-CD3AF104EF0E}"
+                                                                                },
+                                                                                "type": "OpenApiConnection",
+                                                                                "inputs": {
+                                                                                    "parameters": {
+                                                                                        "source": "groups/e8be79ff-3e86-4989-b938-5aa03efc90e9",
+                                                                                        "drive": "b!QNoqtQQKEkKt1J9dUatHQLti2oNp2flGoIi9gsYRIe8ef7acQlFhR7H2v-R3yf8Z",
+                                                                                        "file": "016QGDYJA3LP5NS57RGVC23YPVTT7HGHRH",
+                                                                                        "table": "{4EAE7FF9-E21A-482C-AE75-CD3AF104EF0E}",
+                                                                                        "item/SCHED_DATE": "@trim(outputs('WAKEFERN_-_APPT_-_01_Row_Columns')[4])",
+                                                                                        "item/SCHED_TIME": "@concat(\r\n  substring(trim(outputs('WAKEFERN_-_APPT_-_01_Row_Columns')[5]),0,2),\r\n  ':',\r\n  substring(trim(outputs('WAKEFERN_-_APPT_-_01_Row_Columns')[5]),2,2),\r\n  ':',\r\n  substring(trim(outputs('WAKEFERN_-_APPT_-_01_Row_Columns')[5]),4,2)\r\n)",
+                                                                                        "item/PO_NUMBER": "@substring(\r\n  trim(item()),\r\n  1,\r\n  sub(length(trim(item())),1)\r\n)"
+                                                                                    },
+                                                                                    "host": {
+                                                                                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
+                                                                                        "connectionName": "shared_excelonlinebusiness",
+                                                                                        "operationId": "AddRowV2"
+                                                                                    },
+                                                                                    "authentication": "@parameters('$authentication')"
+                                                                                }
+                                                                            }
+                                                                        },
+                                                                        "runAfter": {
+                                                                            "WAKEFERN_-_APPT_-_01_Split_Ship_With_POs": [
+                                                                                "Succeeded"
+                                                                            ]
+                                                                        },
+                                                                        "type": "Foreach"
+                                                                    }
+                                                                },
+                                                                "runAfter": {
+                                                                    "WAKEFERN_-_APPT_-_01_Add_Main_PO_Row": [
+                                                                        "Succeeded"
+                                                                    ]
+                                                                },
+                                                                "else": {
+                                                                    "actions": {}
+                                                                },
+                                                                "expression": {
+                                                                    "and": [
+                                                                        {
+                                                                            "not": {
+                                                                                "equals": [
+                                                                                    "@trim(outputs('WAKEFERN_-_APPT_-_01_Row_Columns')[3])",
+                                                                                    ""
+                                                                                ]
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                },
+                                                                "type": "If"
+                                                            }
+                                                        },
+                                                        "runAfter": {
+                                                            "WAKEFERN_-_APPT_-_01_Row_Columns": [
+                                                                "Succeeded"
+                                                            ]
+                                                        },
+                                                        "else": {
+                                                            "actions": {}
+                                                        },
+                                                        "expression": {
+                                                            "and": [
+                                                                {
+                                                                    "equals": [
+                                                                        "@contains(outputs('WAKEFERN_-_APPT_-_01_Current_Row_Text'), '017')",
+                                                                        "@true"
+                                                                    ]
+                                                                }
+                                                            ]
+                                                        },
+                                                        "type": "If"
+                                                    }
+                                                },
+                                                "runAfter": {
+                                                    "WAKEFERN_-_APPT_-_01_Clear_Template_Rows": [
+                                                        "Succeeded"
+                                                    ]
+                                                },
+                                                "type": "Foreach"
+                                            },
+                                            "WAKEFERN_-_APPT_-_01_Send_Wakefern_Appointment_Email": {
+                                                "runAfter": {
+                                                    "WAKEFERN_-_APPT_-_01_Send_Changes_DT_to_OSS": [
+                                                        "Succeeded"
+                                                    ]
+                                                },
+                                                "type": "OpenApiConnection",
+                                                "inputs": {
+                                                    "parameters": {
+                                                        "emailMessage/To": "Steve.Salotti@wakefern.com; Grocery_Special_PO_Group@wakefern.com; Mark.Kielczynski@wakefern.com; anne.mucchiello@wakefern.com; Al.DAgostino@wakefern.com",
+                                                        "emailMessage/CC": "jackson.vs@pg.com; rocas.cr@pg.com",
+                                                        "emailMessage/Subject": "@{concat('RE: ', first(triggerOutputs()?['body/value'])?['subject'])}",
+                                                        "emailMessage/Body": "@if(\r\n  outputs('WAKEFERN_-_APPT_-_01_Has_Second_Table'),\r\n  concat(\r\n    '<p>Hello team,</p>',\r\n    '<p>Please set delivery appt time for each PO on each truck:</p>',\r\n    outputs('WAKEFERN_-_APPT_-_01_Extract_First_Table'),\r\n    '<br><br><p>Please have Wakefern GROCERY schedule:</p>',\r\n    outputs('WAKEFERN_-_APPT_-_01_Extract_Second_Table'),\r\n    '<br><br>Regards,<br>pgcustservw2.im@pg.com<br>NA Order Management | Regional'\r\n  ),\r\n  concat(\r\n    '<p>Hello team,</p>',\r\n    '<p>Please set delivery appt time for the PO(s) below:</p>',\r\n    outputs('WAKEFERN_-_APPT_-_01_Extract_First_Table'),\r\n    '<br><br>Regards,<br>pgcustservw2.im@pg.com<br>NA Order Management | Regional'\r\n  )\r\n)",
+                                                        "emailMessage/Importance": "Normal"
+                                                    },
+                                                    "host": {
+                                                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                                        "connectionName": "shared_office365",
+                                                        "operationId": "SendEmailV2"
+                                                    },
+                                                    "authentication": "@parameters('$authentication')"
+                                                }
+                                            },
+                                            "WAKEFERN_-_APPT_-_01_Send_Changes_DT_to_OSS": {
+                                                "runAfter": {
+                                                    "WAKEFERN_-_APPT_-_01_Get_Updated_Template_Content": [
+                                                        "Succeeded"
+                                                    ]
+                                                },
+                                                "type": "OpenApiConnection",
+                                                "inputs": {
+                                                    "parameters": {
+                                                        "emailMessage/To": "nacsoshared.im@pg.com",
+                                                        "emailMessage/Subject": "RPA EMAIL REQUEST TO CHANGES",
+                                                        "emailMessage/Body": "<p class=\"editor-paragraph\">Please find attached the updated appointment load file (template reused).<br><br>Regards,<br>pgcustservw2.im@pg.com<br>NA Order Management | Regional</p>",
+                                                        "emailMessage/Attachments": [
+                                                            {
+                                                                "Name": "Changes DT.xlsx",
+                                                                "ContentBytes": "@body('WAKEFERN_-_APPT_-_01_Get_Updated_Template_Content')"
+                                                            }
+                                                        ],
+                                                        "emailMessage/Importance": "Normal"
+                                                    },
+                                                    "host": {
+                                                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                                        "connectionName": "shared_office365",
+                                                        "operationId": "SendEmailV2"
+                                                    },
+                                                    "authentication": "@parameters('$authentication')"
+                                                }
+                                            },
+                                            "WAKEFERN_-_APPT_-_01_Get_Updated_Template_Content": {
+                                                "runAfter": {
+                                                    "WAKEFERN_-_APPT_-_01_Process_Email_Rows": [
+                                                        "Succeeded"
+                                                    ]
+                                                },
+                                                "metadata": {
+                                                    "%252fShared%2bDocuments%252fGeneral%252fCustomer%2bDocuments%252fWakefern%252fChanges%2bDT.xlsx": "/Shared Documents/General/Customer Documents/Wakefern/Changes DT.xlsx"
+                                                },
+                                                "type": "OpenApiConnection",
+                                                "inputs": {
+                                                    "parameters": {
+                                                        "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+                                                        "id": "%252fShared%2bDocuments%252fGeneral%252fCustomer%2bDocuments%252fWakefern%252fChanges%2bDT.xlsx",
+                                                        "inferContentType": true
+                                                    },
+                                                    "host": {
+                                                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                                                        "connectionName": "shared_sharepointonline",
+                                                        "operationId": "GetFileContent"
+                                                    },
+                                                    "authentication": "@parameters('$authentication')"
+                                                }
+                                            },
+                                            "WAKEFERN_-_APPT_-_01_Mark_As_Read_DT": {
+                                                "runAfter": {
+                                                    "WAKEFERN_-_APPT_-_01_Send_Wakefern_Appointment_Email": [
+                                                        "Succeeded"
+                                                    ]
+                                                },
+                                                "type": "OpenApiConnection",
+                                                "inputs": {
+                                                    "parameters": {
+                                                        "Uri": "@concat('https://graph.microsoft.com/v1.0/me/messages/', first(triggerOutputs()?['body/value'])?['id'])",
+                                                        "Method": "PATCH",
+                                                        "Body": "{\"isRead\": true}",
+                                                        "ContentType": "application/json"
+                                                    },
+                                                    "host": {
+                                                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                                        "connectionName": "shared_office365",
+                                                        "operationId": "HttpRequest"
+                                                    },
+                                                    "authentication": "@parameters('$authentication')"
+                                                }
+                                            },
+                                            "WAKEFERN_-_APPT_-_01_Add_Category_RPA_DT": {
+                                                "runAfter": {
+                                                    "WAKEFERN_-_APPT_-_01_Mark_As_Read_DT": [
+                                                        "Succeeded"
+                                                    ]
+                                                },
+                                                "type": "OpenApiConnection",
+                                                "inputs": {
+                                                    "parameters": {
+                                                        "Uri": "@concat('https://graph.microsoft.com/v1.0/me/messages/', first(triggerOutputs()?['body/value'])?['id'])",
+                                                        "Method": "PATCH",
+                                                        "Body": "{\"categories\": [\"RPA\", \"Follow up\"]}",
+                                                        "ContentType": "application/json"
+                                                    },
+                                                    "host": {
+                                                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                                        "connectionName": "shared_office365",
+                                                        "operationId": "HttpRequest"
+                                                    },
+                                                    "authentication": "@parameters('$authentication')"
+                                                }
+                                            },
+                                            "WAKEFERN_-_APPT_-_01_Move_To_Complete_DT": {
+                                                "runAfter": {
+                                                    "WAKEFERN_-_APPT_-_01_Add_Category_RPA_DT": [
+                                                        "Succeeded"
+                                                    ]
+                                                },
+                                                "type": "OpenApiConnection",
+                                                "inputs": {
+                                                    "parameters": {
+                                                        "Uri": "@concat('https://graph.microsoft.com/v1.0/me/messages/', first(triggerOutputs()?['body/value'])?['id'], '/move')",
+                                                        "Method": "POST",
+                                                        "Body": "{\"destinationId\": \"0000000094146C3E4B45EA44AE62779D3EE35E9001008931ADF43A87D94AB7194A4B87F98E90000493A9A8F30000\"}",
+                                                        "ContentType": "application/json"
+                                                    },
+                                                    "host": {
+                                                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                                        "connectionName": "shared_office365",
+                                                        "operationId": "HttpRequest"
+                                                    },
+                                                    "authentication": "@parameters('$authentication')"
+                                                }
+                                            }
+                                        },
+                                        "runAfter": {
+                                            "WAKEFERN_-_APPT_-_01_Extract_Second_Table": [
+                                                "Succeeded"
+                                            ]
+                                        },
+                                        "else": {
+                                            "actions": {
+                                                "WAKEFERN_-_APPT_-_01_Subject_Is_Grocery": {
+                                                    "actions": {
+                                                        "WAKEFERN_-_APPT_-_01_Send_Grocery_No_Appointment_Email": {
+                                                            "type": "OpenApiConnection",
+                                                            "inputs": {
+                                                                "parameters": {
+                                                                    "emailMessage/To": "Steve.Salotti@wakefern.com; Grocery_Special_PO_Group@wakefern.com; Mark.Kielczynski@wakefern.com; anne.mucchiello@wakefern.com; Al.DAgostino@wakefern.com",
+                                                                    "emailMessage/CC": "jackson.vs@pg.com; rocas.cr@pg.com",
+                                                                    "emailMessage/Subject": "@{concat('RE: ', first(triggerOutputs()?['body/value'])?['subject'])}",
+                                                                    "emailMessage/Body": "<p class=\"editor-paragraph\">@{if(\r\n  outputs('WAKEFERN_-_APPT_-_01_Has_Second_Table'),\r\n  concat(\r\n    '<p>Hello team,</p>',\r\n    '<p>Please process the PO(s) below accordingly:</p>',\r\n    outputs('WAKEFERN_-_APPT_-_01_Extract_First_Table'),\r\n    '<br><br><p>Additionally, please handle the following:</p>',\r\n    outputs('WAKEFERN_-_APPT_-_01_Extract_Second_Table'),\r\n    '<br><br>Regards,<br>pgcustservw2.im@pg.com<br>NA Order Management | Regional'\r\n  ),\r\n  concat(\r\n    '<p>Hello team,</p>',\r\n    '<p>Please process the following PO(s):</p>',\r\n    outputs('WAKEFERN_-_APPT_-_01_Extract_First_Table'),\r\n    '<br><br>Regards,<br>pgcustservw2.im@pg.com<br>NA Order Management | Regional'\r\n  )\r\n)}</p>",
+                                                                    "emailMessage/Importance": "Normal"
+                                                                },
+                                                                "host": {
+                                                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                                                    "connectionName": "shared_office365",
+                                                                    "operationId": "SendEmailV2"
+                                                                },
+                                                                "authentication": "@parameters('$authentication')"
+                                                            }
+                                                        },
+                                                        "WAKEFERN_-_APPT_-_01_Mark_As_Read_Grocery": {
+                                                            "runAfter": {
+                                                                "WAKEFERN_-_APPT_-_01_Send_Grocery_No_Appointment_Email": [
+                                                                    "Succeeded"
+                                                                ]
+                                                            },
+                                                            "type": "OpenApiConnection",
+                                                            "inputs": {
+                                                                "parameters": {
+                                                                    "Uri": "@concat('https://graph.microsoft.com/v1.0/me/messages/', first(triggerOutputs()?['body/value'])?['id'])",
+                                                                    "Method": "PATCH",
+                                                                    "Body": "{\"isRead\": true}",
+                                                                    "ContentType": "application/json"
+                                                                },
+                                                                "host": {
+                                                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                                                    "connectionName": "shared_office365",
+                                                                    "operationId": "HttpRequest"
+                                                                },
+                                                                "authentication": "@parameters('$authentication')"
+                                                            }
+                                                        },
+                                                        "WAKEFERN_-_APPT_-_01_Add_Category_RPA_Grocery": {
+                                                            "runAfter": {
+                                                                "WAKEFERN_-_APPT_-_01_Mark_As_Read_Grocery": [
+                                                                    "Succeeded"
+                                                                ]
+                                                            },
+                                                            "type": "OpenApiConnection",
+                                                            "inputs": {
+                                                                "parameters": {
+                                                                    "Uri": "@concat('https://graph.microsoft.com/v1.0/me/messages/', first(triggerOutputs()?['body/value'])?['id'])",
+                                                                    "Method": "PATCH",
+                                                                    "Body": "{\"categories\": [\"RPA\", \"Follow up\"]}",
+                                                                    "ContentType": "application/json"
+                                                                },
+                                                                "host": {
+                                                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                                                    "connectionName": "shared_office365",
+                                                                    "operationId": "HttpRequest"
+                                                                },
+                                                                "authentication": "@parameters('$authentication')"
+                                                            }
+                                                        },
+                                                        "WAKEFERN_-_APPT_-_01_Move_To_Complete_Grocery": {
+                                                            "runAfter": {
+                                                                "WAKEFERN_-_APPT_-_01_Add_Category_RPA_Grocery": [
+                                                                    "Succeeded"
+                                                                ]
+                                                            },
+                                                            "type": "OpenApiConnection",
+                                                            "inputs": {
+                                                                "parameters": {
+                                                                    "Uri": "@concat('https://graph.microsoft.com/v1.0/me/messages/', first(triggerOutputs()?['body/value'])?['id'], '/move')",
+                                                                    "Method": "POST",
+                                                                    "Body": "{\"destinationId\": \"0000000094146C3E4B45EA44AE62779D3EE35E9001008931ADF43A87D94AB7194A4B87F98E90000493A9A8F30000\"}",
+                                                                    "ContentType": "application/json"
+                                                                },
+                                                                "host": {
+                                                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                                                    "connectionName": "shared_office365",
+                                                                    "operationId": "HttpRequest"
+                                                                },
+                                                                "authentication": "@parameters('$authentication')"
+                                                            }
+                                                        }
+                                                    },
+                                                    "else": {
+                                                        "actions": {
+                                                            "WAKEFERN_-_APPT_-_01_Subject_Is_HABA": {
+                                                                "actions": {
+                                                                    "WAKEFERN_-_APPT_-_01_Send_HABA_No_Appointment_Email": {
+                                                                        "type": "OpenApiConnection",
+                                                                        "inputs": {
+                                                                            "parameters": {
+                                                                                "emailMessage/To": "GMScheduling@wakefern.com; sharper.d@pg.com; Irma.Lang@wakefern.com",
+                                                                                "emailMessage/CC": "jackson.vs@pg.com; rocas.cr@pg.com",
+                                                                                "emailMessage/Subject": "@{concat('RE: ', first(triggerOutputs()?['body/value'])?['subject'])}",
+                                                                                "emailMessage/Body": "<p class=\"editor-paragraph\">@{if(\r\n  outputs('WAKEFERN_-_APPT_-_01_Has_Second_Table'),\r\n  concat(\r\n    '<p>Hello team,</p>',\r\n    '<p>Please schedule these trucks:</p>',\r\n    outputs('WAKEFERN_-_APPT_-_01_Extract_First_Table'),\r\n    '<br><br><p>Please schedule:</p>',\r\n    outputs('WAKEFERN_-_APPT_-_01_Extract_Second_Table'),\r\n    '<br><br>Regards,<br>pgcustservw2.im@pg.com<br>NA Order Management | Regional'\r\n  ),\r\n  concat(\r\n    '<p>Hello team,</p>',\r\n    '<p>Please schedule these trucks:</p>',\r\n    outputs('WAKEFERN_-_APPT_-_01_Extract_First_Table'),\r\n    '<br><br>Regards,<br>pgcustservw2.im@pg.com<br>NA Order Management | Regional'\r\n  )\r\n)}</p>",
+                                                                                "emailMessage/Importance": "Normal"
+                                                                            },
+                                                                            "host": {
+                                                                                "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                                                                "connectionName": "shared_office365",
+                                                                                "operationId": "SendEmailV2"
+                                                                            },
+                                                                            "authentication": "@parameters('$authentication')"
+                                                                        }
+                                                                    },
+                                                                    "WAKEFERN_-_APPT_-_01_Mark_As_Read_HABA": {
+                                                                        "runAfter": {
+                                                                            "WAKEFERN_-_APPT_-_01_Send_HABA_No_Appointment_Email": [
+                                                                                "Succeeded"
+                                                                            ]
+                                                                        },
+                                                                        "type": "OpenApiConnection",
+                                                                        "inputs": {
+                                                                            "parameters": {
+                                                                                "Uri": "@concat('https://graph.microsoft.com/v1.0/me/messages/', first(triggerOutputs()?['body/value'])?['id'])",
+                                                                                "Method": "PATCH",
+                                                                                "Body": "{\"isRead\": true}",
+                                                                                "ContentType": "application/json"
+                                                                            },
+                                                                            "host": {
+                                                                                "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                                                                "connectionName": "shared_office365",
+                                                                                "operationId": "HttpRequest"
+                                                                            },
+                                                                            "authentication": "@parameters('$authentication')"
+                                                                        }
+                                                                    },
+                                                                    "WAKEFERN_-_APPT_-_01_Add_Category_RPA_HABA": {
+                                                                        "runAfter": {
+                                                                            "WAKEFERN_-_APPT_-_01_Mark_As_Read_HABA": [
+                                                                                "Succeeded"
+                                                                            ]
+                                                                        },
+                                                                        "type": "OpenApiConnection",
+                                                                        "inputs": {
+                                                                            "parameters": {
+                                                                                "Uri": "@concat('https://graph.microsoft.com/v1.0/me/messages/', first(triggerOutputs()?['body/value'])?['id'])",
+                                                                                "Method": "PATCH",
+                                                                                "Body": "{\"categories\": [\"RPA\", \"Follow up\"]}",
+                                                                                "ContentType": "application/json"
+                                                                            },
+                                                                            "host": {
+                                                                                "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                                                                "connectionName": "shared_office365",
+                                                                                "operationId": "HttpRequest"
+                                                                            },
+                                                                            "authentication": "@parameters('$authentication')"
+                                                                        }
+                                                                    },
+                                                                    "WAKEFERN_-_APPT_-_01_Move_To_Complete_HABA": {
+                                                                        "runAfter": {
+                                                                            "WAKEFERN_-_APPT_-_01_Add_Category_RPA_HABA": [
+                                                                                "Succeeded"
+                                                                            ]
+                                                                        },
+                                                                        "type": "OpenApiConnection",
+                                                                        "inputs": {
+                                                                            "parameters": {
+                                                                                "Uri": "@concat('https://graph.microsoft.com/v1.0/me/messages/', first(triggerOutputs()?['body/value'])?['id'], '/move')",
+                                                                                "Method": "POST",
+                                                                                "Body": "{\"destinationId\": \"0000000094146C3E4B45EA44AE62779D3EE35E9001008931ADF43A87D94AB7194A4B87F98E90000493A9A8F30000\"}",
+                                                                                "ContentType": "application/json"
+                                                                            },
+                                                                            "host": {
+                                                                                "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                                                                "connectionName": "shared_office365",
+                                                                                "operationId": "HttpRequest"
+                                                                            },
+                                                                            "authentication": "@parameters('$authentication')"
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "else": {
+                                                                    "actions": {}
+                                                                },
+                                                                "expression": {
+                                                                    "and": [
+                                                                        {
+                                                                            "contains": [
+                                                                                "@first(triggerOutputs()?['body/value'])?['subject']",
+                                                                                "HABA"
+                                                                            ]
+                                                                        }
+                                                                    ]
+                                                                },
+                                                                "type": "If"
+                                                            }
+                                                        }
+                                                    },
+                                                    "expression": {
+                                                        "and": [
+                                                            {
+                                                                "contains": [
+                                                                    "@first(triggerOutputs()?['body/value'])?['subject']",
+                                                                    "GROCERY"
+                                                                ]
+                                                            }
+                                                        ]
+                                                    },
+                                                    "type": "If"
+                                                }
+                                            }
+                                        },
+                                        "expression": {
+                                            "and": [
+                                                {
+                                                    "equals": [
+                                                        "@and(\r\n  contains(coalesce(outputs('WAKEFERN_-_APPT_-_01_Email_HTML_Body'), ''), 'Delivery'),\r\n  contains(coalesce(outputs('WAKEFERN_-_APPT_-_01_Email_HTML_Body'), ''), 'Time'),\r\n  contains(coalesce(outputs('WAKEFERN_-_APPT_-_01_Email_HTML_Body'), ''), 'Ship with POs')\r\n)",
+                                                        "@true"
+                                                    ]
+                                                }
+                                            ]
+                                        },
+                                        "type": "If"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "runAfter": {},
+                    "else": {
+                        "actions": {}
+                    },
+                    "expression": {
+                        "and": [
+                            {
+                                "equals": [
+                                    "@or(\r\n  and(\r\n    not(contains(coalesce(first(triggerOutputs()?['body/value'])?['subject'], ''), 'RE:')),\r\n    not(contains(coalesce(first(triggerOutputs()?['body/value'])?['subject'], ''), 'FW:')),\r\n    or(\r\n      contains(coalesce(first(triggerOutputs()?['body/value'])?['subject'], ''), 'Wakefern GROCERY - OM Action Needed'),\r\n      contains(coalesce(first(triggerOutputs()?['body/value'])?['subject'], ''), 'Wakefern HABA - OM Action Needed')\r\n    )\r\n  ),\r\n  and(\r\n    or(\r\n      startsWith(coalesce(first(triggerOutputs()?['body/value'])?['subject'], ''), 'RE:'),\r\n      startsWith(coalesce(first(triggerOutputs()?['body/value'])?['subject'], ''), 'FW:')\r\n    ),\r\n    contains(toLower(coalesce(first(triggerOutputs()?['body/value'])?['from'], '')), 'mark.kielczynski@wakefern.com')\r\n  )\r\n)",
+                                    "@true"
+                                ]
+                            }
+                        ]
+                    },
+                    "type": "If"
+                }
+            },
+            "outputs": {}
+        },
+        "connectionReferences": {
+            "shared_office365": {
+                "connectionName": "shared-office365-89c9854a-cfbd-48e5-acd3-cb019798a1ee",
+                "source": "Embedded",
+                "id": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                "tier": "NotSpecified",
+                "apiName": "office365",
+                "isProcessSimpleApiReferenceConversionAlreadyDone": false
+            },
+            "shared_conversionservice": {
+                "connectionName": "shared-conversionser-db6a514b-7f9f-46f4-9aad-d8f0545b6581",
+                "source": "Embedded",
+                "id": "/providers/Microsoft.PowerApps/apis/shared_conversionservice",
+                "tier": "NotSpecified",
+                "apiName": "conversionservice",
+                "isProcessSimpleApiReferenceConversionAlreadyDone": false
+            },
+            "shared_excelonlinebusiness": {
+                "connectionName": "shared-excelonlinebu-03886d99-1d8e-4b5b-95ce-105a8b6ca4eb",
+                "source": "Embedded",
+                "id": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
+                "tier": "NotSpecified",
+                "apiName": "excelonlinebusiness",
+                "isProcessSimpleApiReferenceConversionAlreadyDone": false
+            },
+            "shared_sharepointonline": {
+                "connectionName": "17baae33a6364de586fadca1146f77c6",
+                "source": "Embedded",
+                "id": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                "tier": "NotSpecified",
+                "apiName": "sharepointonline",
+                "isProcessSimpleApiReferenceConversionAlreadyDone": false
+            }
+        },
+        "flowFailureAlertSubscribed": false,
+        "isManaged": false
+    }
+}
