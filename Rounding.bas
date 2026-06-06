@@ -1239,29 +1239,44 @@ End Sub
 ' Dependencias: Ninguna
 
 Private Sub SortTableByFontColor(ByVal lo As ListObject, ByVal priorityColor As Long)
-
-    Dim idxPct As Long
+    ' Compatibilidad con todas las versiones: columna auxiliar 0/1, sort, borrar columna.
+    Dim ws As Worksheet
+    Dim helperCol As ListColumn
+    Dim helperRng As Range
     Dim sortRng As Range
-    Dim sf As SortField
+    Dim r As Long
+    Dim nRows As Long
 
     If lo Is Nothing Then Exit Sub
     If lo.DataBodyRange Is Nothing Then Exit Sub
 
-    ' Usar la columna Percentage como ancla para el sort por color
-    idxPct = GetColumnIndex(lo, "Percentage")
-    If idxPct = 0 Then idxPct = 1
+    Set ws = lo.Parent
+    nRows = lo.DataBodyRange.Rows.count
 
-    Set sortRng = lo.ListColumns(idxPct).DataBodyRange
+    ' 1) Agregar columna auxiliar al final de la tabla
+    Set helperCol = lo.ListColumns.Add
+    helperCol.name = "_SortHelper_"
+    Set helperRng = helperCol.DataBodyRange
 
+    ' 2) Marcar 0 = color prioritario (va arriba), 1 = resto
+    Dim cellColor As Long
+    For r = 1 To nRows
+        cellColor = lo.DataBodyRange.Cells(r, 1).Font.Color
+        helperRng.Cells(r, 1).Value = IIf(cellColor = priorityColor, 0, 1)
+    Next r
+
+    ' 3) Ordenar por la columna auxiliar
+    Set sortRng = helperRng
     With lo.Sort
         .SortFields.Clear
-        ' SortOnColor se asigna como propiedad del SortField, no como parámetro
-        Set sf = .SortFields.Add(key:=sortRng, SortOn:=xlSortOnFontColor, Order:=xlAscending)
-        sf.SortOnColor = priorityColor
+        .SortFields.Add key:=sortRng, SortOn:=xlSortOnValues, Order:=xlAscending
         .Header = xlYes
         .MatchCase = False
         .Orientation = xlTopToBottom
         .Apply
     End With
+
+    ' 4) Borrar columna auxiliar
+    helperCol.Delete
 
 End Sub
