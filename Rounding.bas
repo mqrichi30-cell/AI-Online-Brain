@@ -1242,6 +1242,7 @@ Private Sub SortTableByFontColor(ByVal lo As ListObject, ByVal priorityColor As 
 
     Dim idxPct As Long
     Dim sortRng As Range
+    Dim sf As SortField
 
     If lo Is Nothing Then Exit Sub
     If lo.DataBodyRange Is Nothing Then Exit Sub
@@ -1254,11 +1255,9 @@ Private Sub SortTableByFontColor(ByVal lo As ListObject, ByVal priorityColor As 
 
     With lo.Sort
         .SortFields.Clear
-        ' Primera clave: color de fuente prioritario arriba
-        .SortFields.Add key:=sortRng, _
-                        SortOn:=xlSortOnFontColor, _
-                        Order:=xlAscending, _
-                        SortOnColor:=priorityColor
+        ' SortOnColor se asigna como propiedad del SortField, no como parámetro
+        Set sf = .SortFields.Add(key:=sortRng, SortOn:=xlSortOnFontColor, Order:=xlAscending)
+        sf.SortOnColor = priorityColor
         .Header = xlYes
         .MatchCase = False
         .Orientation = xlTopToBottom
