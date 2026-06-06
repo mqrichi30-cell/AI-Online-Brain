@@ -4,6 +4,18 @@ Option Explicit
 Private gCutDecision As String  ' "MATERIAL" o "SO"
 Private Const LIGHT_TABLE_STYLE As String = "TableStyleLight1"
 
+' Windows API para forzar ventana siempre encima de todo
+#If VBA7 Then
+    Private Declare PtrSafe Function FindWindow Lib "user32" Alias "FindWindowA" (ByVal lpClassName As String, ByVal lpWindowName As String) As LongPtr
+    Private Declare PtrSafe Function SetWindowPos Lib "user32" (ByVal hWnd As LongPtr, ByVal hWndInsertAfter As LongPtr, ByVal x As Long, ByVal y As Long, ByVal cx As Long, ByVal cy As Long, ByVal wFlags As Long) As Long
+#Else
+    Private Declare Function FindWindow Lib "user32" Alias "FindWindowA" (ByVal lpClassName As String, ByVal lpWindowName As String) As Long
+    Private Declare Function SetWindowPos Lib "user32" (ByVal hWnd As Long, ByVal hWndInsertAfter As Long, ByVal x As Long, ByVal y As Long, ByVal cx As Long, ByVal cy As Long, ByVal wFlags As Long) As Long
+#End If
+Private Const HWND_TOPMOST  As Long = -1
+Private Const SWP_NOMOVE    As Long = &H2
+Private Const SWP_NOSIZE    As Long = &H1
+
 
 '========================================================
 ' Módulo: ZVORDROUND_Auto
@@ -110,9 +122,7 @@ Public Sub ActualizarZVORDROUND_Y_CrearVistas()
     wbExp.Worksheets(1).Activate
 
     ok = True
-    finalMsg = "Proceso exitoso." & vbCrLf & _
-               "Archivo: " & fLatest & vbCrLf & _
-               "Cut decision: " & IIf(UCase$(gCutDecision) = "MATERIAL", "Material", IIf(UCase$(gCutDecision) = "SO", "SO", "N/A"))
+    finalMsg = "Proceso exitoso." & vbCrLf & "Archivo: " & fLatest
 
 CleanExit:
     Application.DisplayAlerts = True
@@ -120,6 +130,10 @@ CleanExit:
     Application.ScreenUpdating = True
 
     MsgBox finalMsg, IIf(ok, vbInformation, vbCritical), "ZVORDROUND"
+
+    ' Mostrar el tipo de corte en ventana destacada (solo si el proceso fue exitoso)
+    If ok Then ShowCutDecisionMessage
+
     Exit Sub
 
 Fail:
@@ -1016,17 +1030,129 @@ End Sub
 
 Private Sub ShowCutDecisionMessage()
 
-    Dim msg As String
+    Dim decision As String
 
-    If UCase$(gCutDecision) = "MATERIAL" Then
-        msg = "Today you will have to cut by Material."
-    ElseIf UCase$(gCutDecision) = "SO" Then
-        msg = "Today you will have to cut by SO."
-    Else
-        msg = "Cut decision could not be determined today."
-    End If
+    Select Case UCase$(gCutDecision)
+        Case "MATERIAL": decision = "MATERIAL"
+        Case "SO":       decision = "SO"
+        Case Else
+            MsgBox "No se pudo determinar el tipo de corte.", vbInformation + 4096, "Rounding"
+            Exit Sub
+    End Select
 
-    MsgBox msg, vbInformation, "Rounding Cut Decision"
+    ' Intentar mostrar el formulario dinámico con texto grande y siempre encima
+    On Error GoTo Fallback
+    ShowDecisionFormDynamic decision
+    Exit Sub
+
+Fallback:
+    ' Si el acceso al VBProject está bloqueado, usar MsgBox con vbSystemModal (siempre encima)
+    MsgBox "Hoy debes cortar por:" & vbCrLf & vbCrLf & "     " & decision & "     ", _
+           vbInformation + 4096, "Rounding Cut Decision"
+
+End Sub
+
+Private Sub ShowDecisionFormDynamic(ByVal decision As String)
+
+    Const FORM_NAME    As String = "frmCutDecisionTemp"
+    Const FORM_CAPTION As String = "Rounding Cut Decision"
+
+    Dim vbp  As Object   ' VBProject
+    Dim comp As Object   ' VBComponent (el form)
+    Dim cm   As Object   ' CodeModule del form
+    Dim ctrl As Object   ' cada control
+    Dim frm  As Object   ' instancia del form
+    Dim fgColor As Long
+
+    ' Rojo oscuro para MATERIAL, azul marino para SO
+    fgColor = IIf(decision = "MATERIAL", RGB(156, 0, 6), RGB(0, 70, 127))
+
+    Set vbp = ThisWorkbook.VBProject
+
+    ' Eliminar form temporal anterior si quedó huérfano
+    On Error Resume Next
+    vbp.VBComponents.Remove vbp.VBComponents(FORM_NAME)
+    On Error GoTo 0
+
+    ' Crear el UserForm en memoria
+    Set comp = vbp.VBComponents.Add(3)   ' 3 = vbext_ct_MSForm
+    comp.name = FORM_NAME
+
+    ' Propiedades del form
+    With comp.Properties
+        .Item("Caption")         = FORM_CAPTION
+        .Item("Width")           = 252        ' ~6.5 cm
+        .Item("Height")          = 162
+        .Item("StartUpPosition") = 1          ' CenterOwner
+        .Item("BackColor")       = RGB(255, 255, 255)
+    End With
+
+    ' ── Etiqueta pequeña superior ──────────────────────────────
+    Set ctrl = comp.Designer.Controls.Add("Forms.Label.1")
+    With ctrl
+        .Caption   = "Hoy debes cortar por:"
+        .Left      = 6:  .Top = 10
+        .Width     = 234: .Height = 20
+        .Font.Size = 11
+        .Font.Bold = False
+        .TextAlign = 2   ' fmTextAlignCenter
+        .ForeColor = RGB(60, 60, 60)
+    End With
+
+    ' ── Etiqueta grande con MATERIAL / SO ──────────────────────
+    Set ctrl = comp.Designer.Controls.Add("Forms.Label.1")
+    With ctrl
+        .Caption   = decision
+        .Left      = 6:  .Top = 34
+        .Width     = 234: .Height = 72
+        .Font.Size = 40
+        .Font.Bold = True
+        .ForeColor = fgColor
+        .TextAlign = 2   ' fmTextAlignCenter
+    End With
+
+    ' ── Botón OK ───────────────────────────────────────────────
+    Set ctrl = comp.Designer.Controls.Add("Forms.CommandButton.1")
+    With ctrl
+        .Caption    = "OK"
+        .Left       = 84:  .Top = 114
+        .Width      = 78:  .Height = 26
+        .Font.Bold  = True
+    End With
+
+    ' ── Código del form: always-on-top al inicializar + cerrar al click ──
+    Set cm = comp.CodeModule
+    Dim code As String
+    code = "#If VBA7 Then" & vbCrLf & _
+           "    Private Declare PtrSafe Function FindWindow Lib ""user32"" Alias ""FindWindowA"" (ByVal lpClassName As String, ByVal lpWindowName As String) As LongPtr" & vbCrLf & _
+           "    Private Declare PtrSafe Function SetWindowPos Lib ""user32"" (ByVal hWnd As LongPtr, ByVal hWndInsertAfter As LongPtr, ByVal x As Long, ByVal y As Long, ByVal cx As Long, ByVal cy As Long, ByVal wFlags As Long) As Long" & vbCrLf & _
+           "#Else" & vbCrLf & _
+           "    Private Declare Function FindWindow Lib ""user32"" Alias ""FindWindowA"" (ByVal lpClassName As String, ByVal lpWindowName As String) As Long" & vbCrLf & _
+           "    Private Declare Function SetWindowPos Lib ""user32"" (ByVal hWnd As Long, ByVal hWndInsertAfter As Long, ByVal x As Long, ByVal y As Long, ByVal cx As Long, ByVal cy As Long, ByVal wFlags As Long) As Long" & vbCrLf & _
+           "#End If" & vbCrLf & _
+           "Private Sub UserForm_Initialize()" & vbCrLf & _
+           "    On Error Resume Next" & vbCrLf & _
+           "    #If VBA7 Then" & vbCrLf & _
+           "        Dim h As LongPtr" & vbCrLf & _
+           "    #Else" & vbCrLf & _
+           "        Dim h As Long" & vbCrLf & _
+           "    #End If" & vbCrLf & _
+           "    h = FindWindow(""ThunderDFrame"", Me.Caption)" & vbCrLf & _
+           "    If h <> 0 Then SetWindowPos h, -1, 0, 0, 0, 0, 3" & vbCrLf & _
+           "End Sub" & vbCrLf & _
+           "Private Sub CommandButton1_Click()" & vbCrLf & _
+           "    Unload Me" & vbCrLf & _
+           "End Sub"
+    cm.InsertLines 1, code
+
+    ' Mostrar el form como modal
+    Set frm = VBA.UserForms.Add(FORM_NAME)
+    frm.Show vbModal
+
+    ' Limpiar el form temporal del proyecto
+    On Error Resume Next
+    vbp.VBComponents.Remove vbp.VBComponents(FORM_NAME)
+    On Error GoTo 0
 
 End Sub
 
