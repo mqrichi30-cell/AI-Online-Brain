@@ -1,0 +1,239 @@
+{
+    "name": "8196de22-3232-4dec-95d3-3b1d1acf4ebd",
+    "id": "/providers/Microsoft.Flow/flows/8196de22-3232-4dec-95d3-3b1d1acf4ebd",
+    "type": "Microsoft.Flow/flows",
+    "properties": {
+        "apiId": "/providers/Microsoft.PowerApps/apis/shared_logicflows",
+        "displayName": "AWG - Ship with POs Repot",
+        "definition": {
+            "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+            "contentVersion": "1.0.0.0",
+            "parameters": {
+                "$authentication": {
+                    "defaultValue": {},
+                    "type": "SecureObject"
+                },
+                "$connections": {
+                    "defaultValue": {},
+                    "type": "Object"
+                }
+            },
+            "triggers": {
+                "When_a_new_email_arrives_(V3)": {
+                    "splitOn": "@triggerOutputs()?['body/value']",
+                    "metadata": {
+                        "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAYFina4AAA=": "Marín, Cristhofer - AWG + Wakefern"
+                    },
+                    "type": "OpenApiConnectionNotification",
+                    "inputs": {
+                        "parameters": {
+                            "subjectFilter": "AWG - Ship with POs Repot",
+                            "folderPath": "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAYFina4AAA=",
+                            "includeAttachments": true,
+                            "onlyWithAttachments": true
+                        },
+                        "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                            "connectionName": "shared_office365",
+                            "operationId": "OnNewEmailV3"
+                        },
+                        "authentication": "@parameters('$authentication')"
+                    }
+                }
+            },
+            "actions": {
+                "Filter_xlsx_attachments": {
+                    "runAfter": {},
+                    "type": "Query",
+                    "inputs": {
+                        "from": "@triggerOutputs()?['body/attachments']",
+                        "where": "@endsWith(toLower(item()?['name']), '.xlsx')"
+                    }
+                },
+                "Update_temp_report_file": {
+                    "runAfter": {
+                        "Filter_xlsx_attachments": [
+                            "Succeeded"
+                        ]
+                    },
+                    "type": "OpenApiConnection",
+                    "inputs": {
+                        "parameters": {
+                            "id": "<<ONEDRIVE_TEMP_FILE_ID>>",
+                            "body": "@base64ToBinary(first(body('Filter_xlsx_attachments'))?['contentBytes'])"
+                        },
+                        "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
+                            "connectionName": "shared_onedriveforbusiness",
+                            "operationId": "UpdateFile"
+                        },
+                        "authentication": "@parameters('$authentication')"
+                    },
+                    "description": "Overwrites a FIXED temp .xlsx in OneDrive with this run's report attachment. Run script points at this same fixed file each time."
+                },
+                "List_contacts": {
+                    "runAfter": {
+                        "Update_temp_report_file": [
+                            "Succeeded"
+                        ]
+                    },
+                    "type": "OpenApiConnection",
+                    "inputs": {
+                        "parameters": {
+                            "source": "<<CONTACTS_SOURCE_SharePoint_Site_URL>>",
+                            "drive": "<<CONTACTS_DRIVE_ID>>",
+                            "file": "<<CONTACTS_FILE_ID_Regional_Team_Contacts_Data_Base_xlsx>>",
+                            "table": "<<CONTACTS_TABLE_NAME>>",
+                            "$top": 5000
+                        },
+                        "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
+                            "connectionName": "shared_excelonlinebusiness",
+                            "operationId": "GetItems"
+                        },
+                        "authentication": "@parameters('$authentication')"
+                    },
+                    "description": "Reads the Ship-to -> Email contact list from the Regional Team Contacts Data Base workbook on SharePoint."
+                },
+                "Select_contacts": {
+                    "runAfter": {
+                        "List_contacts": [
+                            "Succeeded"
+                        ]
+                    },
+                    "type": "Select",
+                    "inputs": {
+                        "from": "@body('List_contacts')?['value']",
+                        "select": {
+                            "name": "@item()?['Ship to Name']",
+                            "email": "@item()?['Email to']"
+                        }
+                    },
+                    "description": "Map contact rows to { name, email }. Adjust the column names on the right to match the Contacts Data Base table headers."
+                },
+                "Compose_contactsJson": {
+                    "runAfter": {
+                        "Select_contacts": [
+                            "Succeeded"
+                        ]
+                    },
+                    "type": "Compose",
+                    "inputs": "@string(body('Select_contacts'))"
+                },
+                "Run_script_build_drafts": {
+                    "runAfter": {
+                        "Compose_contactsJson": [
+                            "Succeeded"
+                        ]
+                    },
+                    "type": "OpenApiConnection",
+                    "inputs": {
+                        "parameters": {
+                            "source": "me",
+                            "drive": "<<ONEDRIVE_DRIVE_ID>>",
+                            "file": "<<ONEDRIVE_TEMP_FILE_ID>>",
+                            "scriptId": "<<OFFICE_SCRIPT_ID_shipWithReport>>",
+                            "ScriptParameters/contactsJson": "@outputs('Compose_contactsJson')",
+                            "ScriptParameters/signatureHtml": "@variables('SignatureHtml')"
+                        },
+                        "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
+                            "connectionName": "shared_excelonlinebusiness",
+                            "operationId": "RunScriptProd"
+                        },
+                        "authentication": "@parameters('$authentication')"
+                    },
+                    "description": "Runs office-scripts/shipWithReport.ts against the temp report. Returns [{ to, cc, subject, htmlBody, matched }]."
+                },
+                "Initialize_SignatureHtml": {
+                    "runAfter": {},
+                    "type": "InitializeVariable",
+                    "inputs": {
+                        "variables": [
+                            {
+                                "name": "SignatureHtml",
+                                "type": "string",
+                                "value": "<br>Best regards,<br><strong>AWG + Wakefern Team</strong><br>P&amp;G Customer Service<br>"
+                            }
+                        ]
+                    },
+                    "description": "Signature appended to every draft. Replace with your real Outlook signature HTML."
+                },
+                "For_each_draft": {
+                    "foreach": "@body('Run_script_build_drafts')?['result']",
+                    "runAfter": {
+                        "Run_script_build_drafts": [
+                            "Succeeded"
+                        ]
+                    },
+                    "type": "Foreach",
+                    "actions": {
+                        "Compose_message": {
+                            "runAfter": {},
+                            "type": "Compose",
+                            "inputs": {
+                                "subject": "@{items('For_each_draft')?['subject']}",
+                                "importance": "normal",
+                                "body": {
+                                    "contentType": "HTML",
+                                    "content": "@{items('For_each_draft')?['htmlBody']}"
+                                },
+                                "toRecipients": "@if(empty(items('For_each_draft')?['to']), json('[]'), json(concat('[{\"emailAddress\":{\"address\":\"', items('For_each_draft')?['to'], '\"}}]')))",
+                                "ccRecipients": "@json('[{\"emailAddress\":{\"address\":\"marquardt.jw@pg.com\"}},{\"emailAddress\":{\"address\":\"jackson.vs@pg.com\"}}]')"
+                            }
+                        },
+                        "Create_draft_in_shared_mailbox": {
+                            "runAfter": {
+                                "Compose_message": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                                "parameters": {
+                                    "Method": "POST",
+                                    "Uri": "https://graph.microsoft.com/v1.0/users/pgcustservw2.im@pg.com/messages",
+                                    "ContentType": "application/json",
+                                    "Body": "@outputs('Compose_message')"
+                                },
+                                "host": {
+                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                    "connectionName": "shared_office365",
+                                    "operationId": "HttpRequest"
+                                },
+                                "authentication": "@parameters('$authentication')"
+                            },
+                            "description": "POST to Graph /messages creates the message as a DRAFT in the shared mailbox Drafts folder (nothing is sent)."
+                        }
+                    }
+                }
+            },
+            "outputs": {}
+        },
+        "connectionReferences": {
+            "shared_office365": {
+                "connectionName": "shared-office365-89c9854a-cfbd-48e5-acd3-cb019798a1ee",
+                "source": "Embedded",
+                "id": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                "tier": "NotSpecified",
+                "apiName": "office365"
+            },
+            "shared_excelonlinebusiness": {
+                "connectionName": "<<EXCEL_ONLINE_BUSINESS_CONNECTION>>",
+                "source": "Embedded",
+                "id": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
+                "tier": "NotSpecified",
+                "apiName": "excelonlinebusiness"
+            },
+            "shared_onedriveforbusiness": {
+                "connectionName": "<<ONEDRIVE_FOR_BUSINESS_CONNECTION>>",
+                "source": "Embedded",
+                "id": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
+                "tier": "NotSpecified",
+                "apiName": "onedriveforbusiness"
+            }
+        },
+        "flowFailureAlertSubscribed": false,
+        "isManaged": false
+    }
+}
