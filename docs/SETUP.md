@@ -74,13 +74,18 @@ cmd\run_shipwith.cmd  "C:\path\report.xlsx"  "C:\path\contacts.xlsx"
 
 ## One-time setup
 
+> **Shortcut:** run **`cmd/setup_flow.cmd`** once — it does steps **A** and **B**
+> for you (creates the temp workbook in OneDrive and copies the Office Script to
+> your clipboard, then opens Excel so you just paste). The manual steps below are
+> what it automates, for reference or if you prefer doing it by hand.
+
 ### A. Create the Office Script
 
 1. Open **any** workbook in Excel on the web (excel.office.com) with the
    `pgcustservw2.im@pg.com` account (or your account that has access).
 2. **Automate → New Script**.
-3. Paste the entire contents of `office-scripts/shipWithReport.ts`. Save it as
-   **`shipWithReport`**.
+3. Paste the entire contents of `office-scripts/shipWithReport.ts` (already on your
+   clipboard if you ran `setup_flow.cmd`). Save it as **`shipWithReport`**.
 4. Note where it is stored (OneDrive). You'll pick it in the flow's *Run script*
    action.
 
@@ -89,9 +94,9 @@ cmd\run_shipwith.cmd  "C:\path\report.xlsx"  "C:\path\contacts.xlsx"
 The *Run script* action must point at a file that exists at design time, so we use
 one fixed file that the flow overwrites every run.
 
-1. In the `pgcustservw2.im@pg.com` OneDrive, create a folder e.g. `/AWG/`.
-2. Put an empty Excel workbook there named **`ShipWith_Temp.xlsx`**.
-   (Any valid .xlsx; its content is overwritten each run.)
+1. In OneDrive, create a folder `/AWG/`.
+2. Put the empty workbook `power-automate/assets/ShipWith_Temp.xlsx` there, named
+   **`ShipWith_Temp.xlsx`**. (`setup_flow.cmd` copies it for you.)
 
 ### C. Confirm the Contacts Data Base is a Table
 
