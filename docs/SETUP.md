@@ -10,6 +10,19 @@ unattended. Nothing is sent automatically; you review and send the drafts.
 > Mode chosen: **Create drafts** (safe). To switch to auto-send later, see
 > [Switching to auto-send](#switching-to-auto-send).
 
+**Behavior rules**
+- **Signature:** generic plain text — `Regards / pgcustservw2.im@pg.com / NA Order
+  Management | Regional`.
+- **Matched Ship-to** → draft goes to the contact's email.
+- **No contact found** → the draft is still produced with the full customer
+  template but addressed to **`pgcustservw2.im@pg.com`**, with a red
+  **"Please add contact for &lt;name&gt;."** note at the top so nothing is lost.
+
+> **Prefer a local one-click tool instead of Power Automate?** Run
+> [`cmd/run_shipwith.cmd`](../cmd/run_shipwith.cmd) — see
+> [Local one-click alternative](#local-one-click-alternative). Same rules, no cloud
+> setup.
+
 ---
 
 ## How it works
@@ -31,10 +44,31 @@ Power Automate expressions. The script (TypeScript) owns all the logic; the flow
 just moves data and creates drafts. See
 [`office-scripts/shipWithReport.ts`](../office-scripts/shipWithReport.ts).
 
-The parsing/HTML logic is mirrored 1:1 in the runnable Python prototype
-([`prototype/parse_and_preview.py`](../prototype/parse_and_preview.py)), which was
-validated against the real attachment (10 consolidations → grouped drafts). Use it
-to preview output without touching Power Automate.
+The parsing/HTML logic is mirrored 1:1 in the runnable Python engine
+([`cmd/shipwith_drafts.py`](../cmd/shipwith_drafts.py)), which was validated against
+the real attachment (10 consolidations → grouped drafts). Use it to preview output
+without touching Power Automate.
+
+---
+
+## Local one-click alternative
+
+If you'd rather not run Power Automate at all, use the local generator — same rules
+(generic signature, no-contact → shared mailbox + note), no cloud setup.
+
+1. Install Python (once), from <https://www.python.org/downloads/>.
+2. Edit `cmd/run_shipwith.cmd` and point `CONTACTS` at your synced copy of
+   *Regional Team - Contacts Data Base.xlsx* (or pass it as the 2nd argument).
+3. **Drag the report `.xlsx` onto `cmd/run_shipwith.cmd`** (or run it and paste the
+   path).
+4. It writes one `.eml` per recipient into `cmd/drafts_out/` and opens the folder.
+   **Double-click each `.eml`** — thanks to the `X-Unsent` header it opens in
+   Outlook as an editable **draft**; review and Send.
+
+```
+cmd\run_shipwith.cmd  "C:\path\report.xlsx"  "C:\path\contacts.xlsx"
+# or:  python cmd\shipwith_drafts.py report.xlsx contacts.xlsx -o drafts_out
+```
 
 ---
 
@@ -131,9 +165,13 @@ same permission the mailbox already uses.
 **CC** is fixed to `marquardt.jw@pg.com; jackson.vs@pg.com` (from the original
 macro). Change it in the `Compose_message` action if needed.
 
-**Signature:** set the `SignatureHtml` variable at the top of the flow to your
-real Outlook signature HTML (the old macro read a local `.htm` file, which a cloud
-flow can't access).
+**No contact found:** the Office Script sets `to` to `pgcustservw2.im@pg.com` and
+prepends a red *"Please add contact for &lt;name&gt;."* note to the body, so the
+draft is never dropped — a human adds the contact and forwards.
+
+**Signature:** a generic plain-text signature (`Regards / pgcustservw2.im@pg.com /
+NA Order Management | Regional`) is set in the `SignatureHtml` variable at the top
+of the flow. Edit that variable if the wording changes.
 
 ---
 
@@ -155,11 +193,11 @@ matched recipients are auto-sent; unmatched ones stay as drafts for a human.
 
 ## Testing
 
-1. Run the prototype locally to preview the exact emails:
+1. Run the local engine to preview the exact emails:
    ```
-   python3 prototype/parse_and_preview.py <report.xlsx> <contacts.xlsx>
+   python3 cmd/shipwith_drafts.py <report.xlsx> <contacts.xlsx> -o drafts_out
    ```
-   Open `samples/preview_all.html`.
+   Open `drafts_out/preview_all.html` (and the `.eml` files).
 2. In Power Automate, use **Test → Manually**, then send yourself a mail with the
    exact subject and the report attached.
 3. Check the shared mailbox **Drafts** folder.

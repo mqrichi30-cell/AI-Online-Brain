@@ -17,17 +17,26 @@ name to a contact, and **creates one draft email per recipient** in the
 | `office-scripts/shipWithReport.ts` | Office Script (Excel Online) — parses the report, matches contacts, builds the draft HTML. All the logic lives here. |
 | `power-automate/AWG-ShipWithPOs-Repot.zip` | Importable Power Automate package (updated flow: trigger → save attachment → run script → create drafts). |
 | `power-automate/AWG-ShipWithPOs/` | Unpacked flow package (edit `definition.json` here, then re-zip). |
-| `prototype/parse_and_preview.py` | Runnable reference of the same logic. Validates parsing and renders email previews without Power Automate. |
+| `cmd/run_shipwith.cmd` | **Windows one-click**: drag the report onto it → generates Outlook draft `.eml` files locally (no cloud setup). |
+| `cmd/shipwith_drafts.py` | The engine behind the `.cmd` and the reference for the Office Script logic. |
 | `samples/` | Sample drafts + rendered `preview_all.html` generated from the real attachment. |
 | `docs/SETUP.md` | Full setup / import / troubleshooting guide. |
+
+### Rules
+
+- **Signature:** generic — `Regards / pgcustservw2.im@pg.com / NA Order Management | Regional`.
+- **Matched Ship-to** → draft to the contact. **No contact** → draft to
+  `pgcustservw2.im@pg.com` with a red *"Please add contact"* note at the top.
 
 ### Quick preview (no Power Automate needed)
 
 ```bash
 pip install openpyxl
-python3 prototype/parse_and_preview.py path/to/report.xlsx [path/to/contacts.xlsx]
-# then open samples/preview_all.html
+python3 cmd/shipwith_drafts.py path/to/report.xlsx [path/to/contacts.xlsx] -o drafts_out
+# then open drafts_out/preview_all.html and the .eml files
 ```
+
+On Windows, just **drag the report onto `cmd/run_shipwith.cmd`**.
 
 ### Setup
 

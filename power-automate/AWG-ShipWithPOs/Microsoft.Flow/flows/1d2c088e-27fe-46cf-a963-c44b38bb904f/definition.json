@@ -153,11 +153,11 @@
                             {
                                 "name": "SignatureHtml",
                                 "type": "string",
-                                "value": "<br>Best regards,<br><strong>AWG + Wakefern Team</strong><br>P&amp;G Customer Service<br>"
+                                "value": "<br>Regards,<br>pgcustservw2.im@pg.com<br>NA Order Management | Regional<br>"
                             }
                         ]
                     },
-                    "description": "Signature appended to every draft. Replace with your real Outlook signature HTML."
+                    "description": "Generic signature appended to every draft (plain text). Edit here if the wording changes."
                 },
                 "For_each_draft": {
                     "foreach": "@body('Run_script_build_drafts')?['result']",

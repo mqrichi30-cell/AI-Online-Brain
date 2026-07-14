@@ -38,6 +38,7 @@ interface DraftEmail {
   matched: boolean;
 }
 
+const SHARED_MAILBOX = "pgcustservw2.im@pg.com";
 const CC_LIST = "marquardt.jw@pg.com; jackson.vs@pg.com";
 
 const INTRO_HTML =
@@ -45,6 +46,12 @@ const INTRO_HTML =
   "The following PO is undersized and requires a Ship With to make a full " +
   "truckload. Do you prefer to write a Ship With PO we can consolidate OR do " +
   "you prefer we add or increase product already on the PO?<br><br>";
+
+// Generic default signature (used when the flow passes an empty signatureHtml).
+const DEFAULT_SIGNATURE =
+  "<br>Regards,<br>" +
+  "pgcustservw2.im@pg.com<br>" +
+  "NA Order Management | Regional<br>";
 
 function main(
   workbook: ExcelScript.Workbook,
@@ -139,8 +146,11 @@ function main(
   const groups: { [key: string]: Group } = {};
 
   for (const b of blocks) {
-    const email = contactMap[normName(b.shipTo)] || "";
-    const matched = email !== "";
+    const resolved = contactMap[normName(b.shipTo)] || "";
+    const matched = resolved !== "";
+    // Unmatched Ship-tos are routed to the shared mailbox (with a note) so a
+    // human can add the contact and forward — nothing is lost.
+    const email = matched ? resolved : SHARED_MAILBOX;
     const key = matched ? email.toLowerCase() : "__unmatched__" + normName(b.shipTo);
     if (!groups[key]) {
       groups[key] = { email: email, matched: matched, names: [], blocks: [] };
@@ -155,11 +165,18 @@ function main(
   const drafts: DraftEmail[] = [];
   for (const key of Object.keys(groups)) {
     const g = groups[key];
-    let body = INTRO_HTML;
+    // For unmatched Ship-tos, add a "please add contact" note at the very top.
+    let body = "";
+    if (!g.matched) {
+      body +=
+        "<p style='color:#b00020;font-weight:bold;'>Please add contact for " +
+        esc(g.names.join(", ")) + ".</p>";
+    }
+    body += INTRO_HTML;
     for (const b of g.blocks) {
       body += blockTableHtml(b);
     }
-    body += signatureHtml || "";
+    body += signatureHtml && signatureHtml.length > 0 ? signatureHtml : DEFAULT_SIGNATURE;
     drafts.push({
       to: g.email,
       cc: CC_LIST,

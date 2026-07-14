@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+cmd/drafts_out/
+drafts_out/
