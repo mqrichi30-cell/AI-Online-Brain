@@ -170,8 +170,10 @@
                             "drive": "@variables('Placeholder')",
                             "file": "@variables('Placeholder')",
                             "scriptId": "@variables('Placeholder')",
-                            "ScriptParameters/contactsJson": "@outputs('Compose_contactsJson')",
-                            "ScriptParameters/signatureHtml": "@variables('SignatureHtml')"
+                            "ScriptParameters": {
+                                "contactsJson": "@outputs('Compose_contactsJson')",
+                                "signatureHtml": "@variables('SignatureHtml')"
+                            }
                         },
                         "host": {
                             "apiId": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
