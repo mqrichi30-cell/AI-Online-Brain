@@ -207,7 +207,7 @@
                                 "ccRecipients": "@json('[{\"emailAddress\":{\"address\":\"marquardt.jw@pg.com\"}},{\"emailAddress\":{\"address\":\"jackson.vs@pg.com\"}}]')"
                             }
                         },
-                        "Create_draft_in_shared_mailbox": {
+                        "Send_email_from_shared_mailbox": {
                             "runAfter": {
                                 "Compose_message": [
                                     "Succeeded"
@@ -217,9 +217,12 @@
                             "inputs": {
                                 "parameters": {
                                     "Method": "POST",
-                                    "Uri": "https://graph.microsoft.com/v1.0/users/pgcustservw2.im@pg.com/messages",
+                                    "Uri": "https://graph.microsoft.com/v1.0/users/pgcustservw2.im@pg.com/sendMail",
                                     "ContentType": "application/json",
-                                    "Body": "@outputs('Compose_message')"
+                                    "Body": {
+                                        "message": "@outputs('Compose_message')",
+                                        "saveToSentItems": true
+                                    }
                                 },
                                 "host": {
                                     "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
@@ -228,7 +231,7 @@
                                 },
                                 "authentication": "@parameters('$authentication')"
                             },
-                            "description": "POST to Graph /messages creates the message as a DRAFT in the shared mailbox Drafts folder (nothing is sent)."
+                            "description": "POST to Graph /sendMail sends the email immediately from the shared mailbox (saved to Sent Items). No draft is created. To go back to drafts, POST to /messages with @outputs('Compose_message') as the body."
                         }
                     }
                 }
