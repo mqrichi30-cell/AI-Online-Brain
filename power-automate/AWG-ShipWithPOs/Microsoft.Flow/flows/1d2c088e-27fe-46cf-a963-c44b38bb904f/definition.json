@@ -203,7 +203,7 @@
                                     "contentType": "HTML",
                                     "content": "@{items('For_each_draft')?['htmlBody']}"
                                 },
-                                "toRecipients": "@if(empty(items('For_each_draft')?['to']), json('[]'), json(concat('[{\"emailAddress\":{\"address\":\"', items('For_each_draft')?['to'], '\"}}]')))",
+                                "toRecipients": "@if(empty(items('For_each_draft')?['to']), json('[]'), json(concat('[{\"emailAddress\":{\"address\":\"', replace(replace(replace(trim(items('For_each_draft')?['to']), ' ', ''), ',', ';'), ';', '\"}},{\"emailAddress\":{\"address\":\"'), '\"}}]')))",
                                 "ccRecipients": "@json('[{\"emailAddress\":{\"address\":\"marquardt.jw@pg.com\"}},{\"emailAddress\":{\"address\":\"jackson.vs@pg.com\"}}]')"
                             }
                         },
