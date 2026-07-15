@@ -269,10 +269,14 @@
                                         "parameters": {
                                             "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
                                             "table": "@variables('Placeholder')",
-                                            "item/Title": "@{replace(items('For_each_draft')?['subject'], 'SHIP WITH NEEDED - ', '')}",
-                                            "item/Subject": "@{items('For_each_draft')?['subject']}",
-                                            "item/HtmlBody": "@{items('For_each_draft')?['htmlBody']}",
-                                            "item/Status/Value": "Pending"
+                                            "item": {
+                                                "Title": "@{replace(items('For_each_draft')?['subject'], 'SHIP WITH NEEDED - ', '')}",
+                                                "Subject": "@{items('For_each_draft')?['subject']}",
+                                                "HtmlBody": "@{items('For_each_draft')?['htmlBody']}",
+                                                "Status": {
+                                                    "Value": "Pending"
+                                                }
+                                            }
                                         },
                                         "host": {
                                             "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",

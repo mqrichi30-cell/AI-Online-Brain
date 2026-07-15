@@ -83,8 +83,10 @@
                                     "drive": "@variables('Placeholder')",
                                     "file": "@variables('Placeholder')",
                                     "table": "@variables('Placeholder')",
-                                    "item/Ship to Name": "@{items('For_each_pending')?['Title']}",
-                                    "item/Email to": "@{items('For_each_pending')?['ContactEmail']}"
+                                    "item": {
+                                        "Ship to Name": "@{items('For_each_pending')?['Title']}",
+                                        "Email to": "@{items('For_each_pending')?['ContactEmail']}"
+                                    }
                                 },
                                 "host": {
                                     "apiId": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
@@ -171,8 +173,12 @@
                                     "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
                                     "table": "@variables('Placeholder')",
                                     "id": "@{items('For_each_pending')?['ID']}",
-                                    "item/Title": "@{items('For_each_pending')?['Title']}",
-                                    "item/Status/Value": "Sent"
+                                    "item": {
+                                        "Title": "@{items('For_each_pending')?['Title']}",
+                                        "Status": {
+                                            "Value": "Sent"
+                                        }
+                                    }
                                 },
                                 "host": {
                                     "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
