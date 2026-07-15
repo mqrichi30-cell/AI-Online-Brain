@@ -207,7 +207,7 @@
                                 "ccRecipients": "@json('[{\"emailAddress\":{\"address\":\"marquardt.jw@pg.com\"}},{\"emailAddress\":{\"address\":\"jackson.vs@pg.com\"}}]')"
                             }
                         },
-                        "Send_email_from_shared_mailbox": {
+                        "Create_message": {
                             "runAfter": {
                                 "Compose_message": [
                                     "Succeeded"
@@ -216,13 +216,10 @@
                             "type": "OpenApiConnection",
                             "inputs": {
                                 "parameters": {
+                                    "Uri": "v1.0/me/messages",
                                     "Method": "POST",
-                                    "Uri": "https://graph.microsoft.com/v1.0/users/pgcustservw2.im@pg.com/sendMail",
-                                    "ContentType": "application/json",
-                                    "Body": {
-                                        "message": "@outputs('Compose_message')",
-                                        "saveToSentItems": true
-                                    }
+                                    "Body": "@outputs('Compose_message')",
+                                    "ContentType": "application/json"
                                 },
                                 "host": {
                                     "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
@@ -231,9 +228,78 @@
                                 },
                                 "authentication": "@parameters('$authentication')"
                             },
-                            "description": "POST to Graph /sendMail sends the email immediately from the shared mailbox (saved to Sent Items). No draft is created. To go back to drafts, POST to /messages with @outputs('Compose_message') as the body."
+                            "description": "Creates the message as a draft in the pgcustservw2 mailbox."
+                        },
+                        "Send_message": {
+                            "runAfter": {
+                                "Create_message": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                                "parameters": {
+                                    "Uri": "v1.0/me/messages/@{encodeUriComponent(body('Create_message')?['id'])}/send",
+                                    "Method": "POST",
+                                    "Body": "{}",
+                                    "ContentType": "application/json"
+                                },
+                                "host": {
+                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                    "connectionName": "shared_office365",
+                                    "operationId": "HttpRequest"
+                                },
+                                "authentication": "@parameters('$authentication')"
+                            },
+                            "description": "Sends the just-created message (auto-send). Saved to Sent Items."
                         }
                     }
+                },
+                "Set_category_RPA": {
+                    "runAfter": {
+                        "For_each_draft": [
+                            "Succeeded"
+                        ]
+                    },
+                    "type": "OpenApiConnection",
+                    "inputs": {
+                        "parameters": {
+                            "Uri": "v1.0/me/messages/@{encodeUriComponent(triggerOutputs()?['body/id'])}",
+                            "Method": "PATCH",
+                            "Body": "{\"categories\":[\"RPA\"]}",
+                            "ContentType": "application/json"
+                        },
+                        "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                            "connectionName": "shared_office365",
+                            "operationId": "HttpRequest"
+                        },
+                        "authentication": "@parameters('$authentication')"
+                    },
+                    "description": "Tags the original incoming email with the 'RPA' category."
+                },
+                "Move_to_AWG_Complete": {
+                    "runAfter": {
+                        "Set_category_RPA": [
+                            "Succeeded"
+                        ]
+                    },
+                    "type": "OpenApiConnection",
+                    "inputs": {
+                        "parameters": {
+                            "Uri": "v1.0/me/messages/@{encodeUriComponent(triggerOutputs()?['body/id'])}/move",
+                            "Method": "POST",
+                            "Body": "{\"destinationId\":\"AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAAiDm4CAAA=\"}",
+                            "ContentType": "application/json"
+                        },
+                        "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                            "connectionName": "shared_office365",
+                            "operationId": "HttpRequest"
+                        },
+                        "authentication": "@parameters('$authentication')"
+                    },
+                    "description": "Moves the original incoming email to the AWG Complete folder."
                 }
             },
             "outputs": {}
