@@ -252,6 +252,38 @@
                                 "authentication": "@parameters('$authentication')"
                             },
                             "description": "Sends the just-created message (auto-send). Saved to Sent Items."
+                        },
+                        "Create_pending_item_if_no_contact": {
+                            "runAfter": {
+                                "Send_message": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "If",
+                            "expression": "@equals(items('For_each_draft')?['matched'], false)",
+                            "actions": {
+                                "Create_pending_item": {
+                                    "runAfter": {},
+                                    "type": "OpenApiConnection",
+                                    "inputs": {
+                                        "parameters": {
+                                            "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+                                            "table": "@variables('Placeholder')",
+                                            "item/Title": "@{replace(items('For_each_draft')?['subject'], 'SHIP WITH NEEDED - ', '')}",
+                                            "item/Subject": "@{items('For_each_draft')?['subject']}",
+                                            "item/HtmlBody": "@{items('For_each_draft')?['htmlBody']}",
+                                            "item/Status/Value": "Pending"
+                                        },
+                                        "host": {
+                                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                                            "connectionName": "shared_sharepointonline",
+                                            "operationId": "PostItem"
+                                        },
+                                        "authentication": "@parameters('$authentication')"
+                                    },
+                                    "description": "Creates a Pending row in the AWG ShipWith Pending list (re-pick the List in the designer)."
+                                }
+                            }
                         }
                     }
                 },

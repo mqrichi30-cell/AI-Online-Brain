@@ -1,0 +1,220 @@
+{
+    "name": "2a2c088e-27fe-46cf-a963-c44b38bb9040",
+    "id": "/providers/Microsoft.Flow/flows/2a2c088e-27fe-46cf-a963-c44b38bb9040",
+    "type": "Microsoft.Flow/flows",
+    "properties": {
+        "apiId": "/providers/Microsoft.PowerApps/apis/shared_logicflows",
+        "displayName": "AWG ShipWith - Add Contact & Send",
+        "definition": {
+            "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+            "contentVersion": "1.0.0.0",
+            "parameters": {
+                "$authentication": {
+                    "defaultValue": {},
+                    "type": "SecureObject"
+                },
+                "$connections": {
+                    "defaultValue": {},
+                    "type": "Object"
+                }
+            },
+            "triggers": {
+                "Recurrence": {
+                    "type": "Recurrence",
+                    "recurrence": {
+                        "frequency": "Minute",
+                        "interval": 10
+                    }
+                }
+            },
+            "actions": {
+                "Initialize_Placeholder": {
+                    "runAfter": {},
+                    "type": "InitializeVariable",
+                    "inputs": {
+                        "variables": [
+                            {
+                                "name": "Placeholder",
+                                "type": "string",
+                                "value": ""
+                            }
+                        ]
+                    },
+                    "description": "Empty value so SharePoint/Excel list/file/table fields import without validation; re-pick them in the designer."
+                },
+                "Get_pending_items": {
+                    "runAfter": {
+                        "Initialize_Placeholder": [
+                            "Succeeded"
+                        ]
+                    },
+                    "type": "OpenApiConnection",
+                    "inputs": {
+                        "parameters": {
+                            "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+                            "table": "@variables('Placeholder')",
+                            "$filter": "Status eq 'Pending' and ContactEmail ne null",
+                            "$top": 100
+                        },
+                        "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                            "connectionName": "shared_sharepointonline",
+                            "operationId": "GetItems"
+                        },
+                        "authentication": "@parameters('$authentication')"
+                    },
+                    "description": "Reads Pending rows (email filled) from AWG ShipWith Pending. Re-pick the List in the designer."
+                },
+                "For_each_pending": {
+                    "foreach": "@body('Get_pending_items')?['value']",
+                    "runAfter": {
+                        "Get_pending_items": [
+                            "Succeeded"
+                        ]
+                    },
+                    "type": "Foreach",
+                    "actions": {
+                        "Add_contact_row": {
+                            "runAfter": {},
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                                "parameters": {
+                                    "source": "@variables('Placeholder')",
+                                    "drive": "@variables('Placeholder')",
+                                    "file": "@variables('Placeholder')",
+                                    "table": "@variables('Placeholder')",
+                                    "item/Ship to Name": "@{items('For_each_pending')?['Title']}",
+                                    "item/Email to": "@{items('For_each_pending')?['ContactEmail']}"
+                                },
+                                "host": {
+                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
+                                    "connectionName": "shared_excelonlinebusiness",
+                                    "operationId": "AddRowV2"
+                                },
+                                "authentication": "@parameters('$authentication')"
+                            },
+                            "description": "Adds the contact to the Contacts Data Base. Re-pick Location/Library/File/Table in the designer."
+                        },
+                        "Compose_message": {
+                            "runAfter": {
+                                "Add_contact_row": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "Compose",
+                            "inputs": {
+                                "subject": "@{items('For_each_pending')?['Subject']}",
+                                "importance": "normal",
+                                "body": {
+                                    "contentType": "HTML",
+                                    "content": "@{items('For_each_pending')?['HtmlBody']}"
+                                },
+                                "toRecipients": "@json(concat('[{\"emailAddress\":{\"address\":\"', replace(replace(replace(trim(items('For_each_pending')?['ContactEmail']), ' ', ''), ',', ';'), ';', '\"}},{\"emailAddress\":{\"address\":\"'), '\"}}]'))",
+                                "ccRecipients": "@json('[{\"emailAddress\":{\"address\":\"marquardt.jw@pg.com\"}},{\"emailAddress\":{\"address\":\"jackson.vs@pg.com\"}}]')"
+                            }
+                        },
+                        "Create_message": {
+                            "runAfter": {
+                                "Compose_message": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                                "parameters": {
+                                    "Uri": "v1.0/me/messages",
+                                    "Method": "POST",
+                                    "Body": "@outputs('Compose_message')",
+                                    "ContentType": "application/json"
+                                },
+                                "host": {
+                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                    "connectionName": "shared_office365",
+                                    "operationId": "HttpRequest"
+                                },
+                                "authentication": "@parameters('$authentication')"
+                            },
+                            "description": "Creates the message in the pgcustservw2 mailbox."
+                        },
+                        "Send_message": {
+                            "runAfter": {
+                                "Create_message": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                                "parameters": {
+                                    "Uri": "v1.0/me/messages/@{encodeUriComponent(body('Create_message')?['id'])}/send",
+                                    "Method": "POST",
+                                    "Body": "{}",
+                                    "ContentType": "application/json"
+                                },
+                                "host": {
+                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                    "connectionName": "shared_office365",
+                                    "operationId": "HttpRequest"
+                                },
+                                "authentication": "@parameters('$authentication')"
+                            },
+                            "description": "Sends the message to the newly added contact."
+                        },
+                        "Mark_item_sent": {
+                            "runAfter": {
+                                "Send_message": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                                "parameters": {
+                                    "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+                                    "table": "@variables('Placeholder')",
+                                    "id": "@{items('For_each_pending')?['ID']}",
+                                    "item/Title": "@{items('For_each_pending')?['Title']}",
+                                    "item/Status/Value": "Sent"
+                                },
+                                "host": {
+                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                                    "connectionName": "shared_sharepointonline",
+                                    "operationId": "PatchItem"
+                                },
+                                "authentication": "@parameters('$authentication')"
+                            },
+                            "description": "Marks the pending item as Sent. Re-pick the List in the designer."
+                        }
+                    }
+                }
+            },
+            "outputs": {}
+        },
+        "connectionReferences": {
+            "shared_office365": {
+                "connectionName": "shared-office365-89c9854a-cfbd-48e5-acd3-cb019798a1ee",
+                "source": "Embedded",
+                "id": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                "tier": "NotSpecified",
+                "apiName": "office365",
+                "isProcessSimpleApiReferenceConversionAlreadyDone": false
+            },
+            "shared_sharepointonline": {
+                "connectionName": "17baae33a6364de586fadca1146f77c6",
+                "source": "Embedded",
+                "id": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                "tier": "NotSpecified",
+                "apiName": "sharepointonline",
+                "isProcessSimpleApiReferenceConversionAlreadyDone": false
+            },
+            "shared_excelonlinebusiness": {
+                "connectionName": "shared-excelonlinebu-03886d99-1d8e-4b5b-95ce-105a8b6ca4eb",
+                "source": "Embedded",
+                "id": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
+                "tier": "NotSpecified",
+                "apiName": "excelonlinebusiness",
+                "isProcessSimpleApiReferenceConversionAlreadyDone": false
+            }
+        },
+        "flowFailureAlertSubscribed": false,
+        "isManaged": false
+    }
+}
