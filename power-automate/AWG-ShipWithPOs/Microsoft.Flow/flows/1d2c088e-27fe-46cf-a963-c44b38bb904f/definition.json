@@ -42,15 +42,32 @@
                 }
             },
             "actions": {
-                "Filter_xlsx_attachments": {
+                "Initialize_SignatureHtml": {
                     "runAfter": {},
+                    "type": "InitializeVariable",
+                    "inputs": {
+                        "variables": [
+                            {
+                                "name": "SignatureHtml",
+                                "type": "string",
+                                "value": "<br>Regards,<br>pgcustservw2.im@pg.com<br>NA Order Management | Regional<br>"
+                            }
+                        ]
+                    }
+                },
+                "Filter_xlsx_attachments": {
+                    "runAfter": {
+                        "Initialize_SignatureHtml": [
+                            "Succeeded"
+                        ]
+                    },
                     "type": "Query",
                     "inputs": {
                         "from": "@triggerOutputs()?['body/attachments']",
                         "where": "@endsWith(toLower(item()?['name']), '.xlsx')"
                     }
                 },
-                "Update_temp_report_file": {
+                "Create_temp_report_file": {
                     "runAfter": {
                         "Filter_xlsx_attachments": [
                             "Succeeded"
@@ -59,29 +76,31 @@
                     "type": "OpenApiConnection",
                     "inputs": {
                         "parameters": {
-                            "id": "<<ONEDRIVE_TEMP_FILE_ID>>",
+                            "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+                            "folderPath": "/Shared Documents/General/Customer Documents/AWG-VMC",
+                            "name": "ShipWith_Temp.xlsx",
                             "body": "@base64ToBinary(first(body('Filter_xlsx_attachments'))?['contentBytes'])"
                         },
                         "host": {
-                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
-                            "connectionName": "shared_onedriveforbusiness",
-                            "operationId": "UpdateFile"
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                            "connectionName": "shared_sharepointonline",
+                            "operationId": "CreateFile"
                         },
                         "authentication": "@parameters('$authentication')"
                     },
-                    "description": "Overwrites a FIXED temp .xlsx in OneDrive with this run's report attachment. Run script points at this same fixed file each time."
+                    "description": "Writes this run's report attachment to a FIXED SharePoint file. Run script points at this same file each run (bind it in the designer)."
                 },
                 "List_contacts": {
                     "runAfter": {
-                        "Update_temp_report_file": [
+                        "Create_temp_report_file": [
                             "Succeeded"
                         ]
                     },
                     "type": "OpenApiConnection",
                     "inputs": {
                         "parameters": {
-                            "source": "<<CONTACTS_SOURCE_SharePoint_Site_URL>>",
-                            "drive": "<<CONTACTS_DRIVE_ID>>",
+                            "source": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+                            "drive": "<<CONTACTS_DRIVE_ID_bind_in_designer>>",
                             "file": "<<CONTACTS_FILE_ID_Regional_Team_Contacts_Data_Base_xlsx>>",
                             "table": "<<CONTACTS_TABLE_NAME>>",
                             "$top": 5000
@@ -93,7 +112,7 @@
                         },
                         "authentication": "@parameters('$authentication')"
                     },
-                    "description": "Reads the Ship-to -> Email contact list from the Regional Team Contacts Data Base workbook on SharePoint."
+                    "description": "List rows present in a table -> the Regional Team Contacts Data Base. Bind Location/Document Library/File/Table in the designer."
                 },
                 "Select_contacts": {
                     "runAfter": {
@@ -109,7 +128,7 @@
                             "email": "@item()?['Email to']"
                         }
                     },
-                    "description": "Map contact rows to { name, email }. Adjust the column names on the right to match the Contacts Data Base table headers."
+                    "description": "Map contact rows to { name, email }. Adjust the column names to match the Contacts Data Base headers."
                 },
                 "Compose_contactsJson": {
                     "runAfter": {
@@ -129,9 +148,9 @@
                     "type": "OpenApiConnection",
                     "inputs": {
                         "parameters": {
-                            "source": "me",
-                            "drive": "<<ONEDRIVE_DRIVE_ID>>",
-                            "file": "<<ONEDRIVE_TEMP_FILE_ID>>",
+                            "source": "<<REPORT_SOURCE_bind_in_designer>>",
+                            "drive": "<<REPORT_DRIVE_ID>>",
+                            "file": "<<REPORT_FILE_ID_ShipWith_Temp_xlsx>>",
                             "scriptId": "<<OFFICE_SCRIPT_ID_shipWithReport>>",
                             "ScriptParameters/contactsJson": "@outputs('Compose_contactsJson')",
                             "ScriptParameters/signatureHtml": "@variables('SignatureHtml')"
@@ -143,21 +162,7 @@
                         },
                         "authentication": "@parameters('$authentication')"
                     },
-                    "description": "Runs office-scripts/shipWithReport.ts against the temp report. Returns [{ to, cc, subject, htmlBody, matched }]."
-                },
-                "Initialize_SignatureHtml": {
-                    "runAfter": {},
-                    "type": "InitializeVariable",
-                    "inputs": {
-                        "variables": [
-                            {
-                                "name": "SignatureHtml",
-                                "type": "string",
-                                "value": "<br>Regards,<br>pgcustservw2.im@pg.com<br>NA Order Management | Regional<br>"
-                            }
-                        ]
-                    },
-                    "description": "Generic signature appended to every draft (plain text). Edit here if the wording changes."
+                    "description": "Runs Office Script shipWithReport on the temp report. Bind File=ShipWith_Temp.xlsx and Script=shipWithReport in the designer. Returns [{ to, cc, subject, htmlBody, matched }]."
                 },
                 "For_each_draft": {
                     "foreach": "@body('Run_script_build_drafts')?['result']",
@@ -216,21 +221,24 @@
                 "source": "Embedded",
                 "id": "/providers/Microsoft.PowerApps/apis/shared_office365",
                 "tier": "NotSpecified",
-                "apiName": "office365"
+                "apiName": "office365",
+                "isProcessSimpleApiReferenceConversionAlreadyDone": false
+            },
+            "shared_sharepointonline": {
+                "connectionName": "17baae33a6364de586fadca1146f77c6",
+                "source": "Embedded",
+                "id": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                "tier": "NotSpecified",
+                "apiName": "sharepointonline",
+                "isProcessSimpleApiReferenceConversionAlreadyDone": false
             },
             "shared_excelonlinebusiness": {
-                "connectionName": "<<EXCEL_ONLINE_BUSINESS_CONNECTION>>",
+                "connectionName": "shared-excelonlinebu-03886d99-1d8e-4b5b-95ce-105a8b6ca4eb",
                 "source": "Embedded",
                 "id": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
                 "tier": "NotSpecified",
-                "apiName": "excelonlinebusiness"
-            },
-            "shared_onedriveforbusiness": {
-                "connectionName": "<<ONEDRIVE_FOR_BUSINESS_CONNECTION>>",
-                "source": "Embedded",
-                "id": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
-                "tier": "NotSpecified",
-                "apiName": "onedriveforbusiness"
+                "apiName": "excelonlinebusiness",
+                "isProcessSimpleApiReferenceConversionAlreadyDone": false
             }
         },
         "flowFailureAlertSubscribed": false,

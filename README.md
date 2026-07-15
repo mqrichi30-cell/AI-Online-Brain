@@ -55,7 +55,7 @@ Full details in **[docs/SETUP.md](docs/SETUP.md)**.
 ```
 Email arrives (subject "AWG - Ship with POs Repot")
   → filter .xlsx attachment
-  → overwrite fixed temp .xlsx in OneDrive
+  → write attachment to fixed temp .xlsx in SharePoint (NACSO-RegionalVMI)
   → list contacts from "Regional Team – Contacts Data Base.xlsx"
   → Run Office Script shipWithReport  →  [{ to, cc, subject, htmlBody }]
   → for each → create DRAFT in shared mailbox (Graph POST /messages)

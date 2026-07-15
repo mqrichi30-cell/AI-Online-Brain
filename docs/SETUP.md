@@ -31,7 +31,7 @@ unattended. Nothing is sent automatically; you review and send the drafts.
 Email arrives  (subject = "AWG - Ship with POs Repot", folder "AWG + Wakefern")
    │
    ├─ 1. Filter the .xlsx attachment (the Consolidations report)
-   ├─ 2. Overwrite a FIXED temp .xlsx in OneDrive with the attachment bytes
+   ├─ 2. Write the attachment to a FIXED temp .xlsx in SharePoint (NACSO-RegionalVMI)
    ├─ 3. List contacts from "Regional Team – Contacts Data Base.xlsx" (SharePoint)
    ├─ 4. Run Office Script `shipWithReport` on the temp file
    │        → parses consolidations, matches Ship-to → email,
@@ -89,14 +89,16 @@ cmd\run_shipwith.cmd  "C:\path\report.xlsx"  "C:\path\contacts.xlsx"
 4. Note where it is stored (OneDrive). You'll pick it in the flow's *Run script*
    action.
 
-### B. Create the fixed temp report file
+### B. Create the fixed temp report file (in SharePoint)
 
 The *Run script* action must point at a file that exists at design time, so we use
 one fixed file that the flow overwrites every run.
 
-1. In OneDrive, create a folder `/AWG/`.
-2. Put the empty workbook `power-automate/assets/ShipWith_Temp.xlsx` there, named
-   **`ShipWith_Temp.xlsx`**. (`setup_flow.cmd` copies it for you.)
+1. Go to the **NACSO-RegionalVMI** SharePoint site →
+   `Shared Documents/General/Customer Documents/AWG-VMC`.
+2. Upload the empty workbook `power-automate/assets/ShipWith_Temp.xlsx` there.
+   (Or just run the flow once — the *Create temp report file* action creates it
+   automatically; then bind *Run script* to it.)
 
 ### C. Confirm the Contacts Data Base is a Table
 
@@ -130,17 +132,20 @@ A ready-to-import package is at
 2. Upload the zip.
 3. For each resource, pick the connection:
    - **Office 365 Outlook** → the existing `pgcustservw2.im@pg.com` connection.
-   - **Excel Online (Business)** → create/select a connection.
-   - **OneDrive for Business** → create/select a connection.
+   - **SharePoint** → the existing `marin.c@pg.com` connection.
+   - **Excel Online (Business)** → the existing `marin.c@pg.com` connection.
+
+   (These already exist in your tenant, so they resolve as *Existing* — the import
+   won't hang on "Related resources".)
 4. Import, then **open the flow to finish binding** (the package uses placeholders
    that must be replaced in the designer):
 
 | Action | Field | Set to |
 |---|---|---|
-| Update temp report file (OneDrive) | File | `/AWG/ShipWith_Temp.xlsx` |
+| Create temp report file (SharePoint) | Site / Folder | NACSO-RegionalVMI → `.../Customer Documents/AWG-VMC` (adjust if needed) |
 | List contacts (Excel) | Location / Document Library / File | the SharePoint **Contacts Data Base** workbook |
 | List contacts (Excel) | Table | your contacts table name (e.g. `MasterData`) |
-| Run script (Excel) | Location / File | `/AWG/ShipWith_Temp.xlsx` |
+| Run script (Excel) | Location / File | the `ShipWith_Temp.xlsx` from the step above |
 | Run script (Excel) | Script | `shipWithReport` |
 
 The `<<PLACEHOLDER>>` values in `definition.json` (drive IDs, file IDs, script ID,
