@@ -55,9 +55,27 @@
                         ]
                     }
                 },
-                "Filter_xlsx_attachments": {
+                "Initialize_Placeholder": {
                     "runAfter": {
                         "Initialize_SignatureHtml": [
+                            "Succeeded"
+                        ]
+                    },
+                    "type": "InitializeVariable",
+                    "inputs": {
+                        "variables": [
+                            {
+                                "name": "Placeholder",
+                                "type": "string",
+                                "value": ""
+                            }
+                        ]
+                    },
+                    "description": "Empty value used so Excel file/table/script fields import without validation. Re-pick the real file/table/script in the designer."
+                },
+                "Filter_xlsx_attachments": {
+                    "runAfter": {
+                        "Initialize_Placeholder": [
                             "Succeeded"
                         ]
                     },
@@ -99,10 +117,10 @@
                     "type": "OpenApiConnection",
                     "inputs": {
                         "parameters": {
-                            "source": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
-                            "drive": "<<CONTACTS_DRIVE_ID_bind_in_designer>>",
-                            "file": "<<CONTACTS_FILE_ID_Regional_Team_Contacts_Data_Base_xlsx>>",
-                            "table": "<<CONTACTS_TABLE_NAME>>",
+                            "source": "@variables('Placeholder')",
+                            "drive": "@variables('Placeholder')",
+                            "file": "@variables('Placeholder')",
+                            "table": "@variables('Placeholder')",
                             "$top": 5000
                         },
                         "host": {
@@ -112,7 +130,7 @@
                         },
                         "authentication": "@parameters('$authentication')"
                     },
-                    "description": "List rows present in a table -> the Regional Team Contacts Data Base. Bind Location/Document Library/File/Table in the designer."
+                    "description": "List rows present in a table -> the Regional Team Contacts Data Base. In the designer, re-pick Location / Document Library / File / Table (this replaces the placeholder expressions)."
                 },
                 "Select_contacts": {
                     "runAfter": {
@@ -148,10 +166,10 @@
                     "type": "OpenApiConnection",
                     "inputs": {
                         "parameters": {
-                            "source": "<<REPORT_SOURCE_bind_in_designer>>",
-                            "drive": "<<REPORT_DRIVE_ID>>",
-                            "file": "<<REPORT_FILE_ID_ShipWith_Temp_xlsx>>",
-                            "scriptId": "<<OFFICE_SCRIPT_ID_shipWithReport>>",
+                            "source": "@variables('Placeholder')",
+                            "drive": "@variables('Placeholder')",
+                            "file": "@variables('Placeholder')",
+                            "scriptId": "@variables('Placeholder')",
                             "ScriptParameters/contactsJson": "@outputs('Compose_contactsJson')",
                             "ScriptParameters/signatureHtml": "@variables('SignatureHtml')"
                         },
@@ -162,7 +180,7 @@
                         },
                         "authentication": "@parameters('$authentication')"
                     },
-                    "description": "Runs Office Script shipWithReport on the temp report. Bind File=ShipWith_Temp.xlsx and Script=shipWithReport in the designer. Returns [{ to, cc, subject, htmlBody, matched }]."
+                    "description": "Runs Office Script shipWithReport on the temp report. In the designer, re-pick Location / File = ShipWith_Temp.xlsx and Script = shipWithReport. Returns [{ to, cc, subject, htmlBody, matched }]."
                 },
                 "For_each_draft": {
                     "foreach": "@body('Run_script_build_drafts')?['result']",
