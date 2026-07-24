@@ -1,0 +1,213 @@
+{
+  "name": "9e5ee854-6397-4fa3-a626-9bc28248aa4c",
+  "id": "/providers/Microsoft.Flow/flows/9e5ee854-6397-4fa3-a626-9bc28248aa4c",
+  "type": "Microsoft.Flow/flows",
+  "properties": {
+    "apiId": "/providers/Microsoft.PowerApps/apis/shared_logicflows",
+    "displayName": "Wakefern - YV block - Stage 2 Update Qty",
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        }
+      },
+      "triggers": {
+        "When_a_new_email_arrives_(V3)": {
+          "splitOn": "@triggerOutputs()?['body/value']",
+          "type": "OpenApiConnectionNotification",
+          "inputs": {
+            "parameters": {
+              "from": "ossgenai.im@pg.com",
+              "includeAttachments": false,
+              "subjectFilter": "Wakefern YV Qty Confirmation Request",
+              "folderPath": "Inbox"
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+              "connectionName": "shared_office365",
+              "operationId": "OnNewEmailV3"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        }
+      },
+      "actions": {
+        "Has_YV_Block": {
+          "type": "If",
+          "runAfter": {},
+          "expression": {
+            "and": [
+              {
+                "contains": [
+                  "@triggerOutputs()?['body/body']",
+                  "###PGYV-START###"
+                ]
+              },
+              {
+                "contains": [
+                  "@triggerOutputs()?['body/body']",
+                  "###PGYV-END###"
+                ]
+              }
+            ]
+          },
+          "else": {
+            "actions": {
+              "No_YV_Block_Found": {
+                "type": "Compose",
+                "inputs": "Reply from OSSGENAI did not contain the ###PGYV-START###/###PGYV-END### block. Ignored."
+              }
+            }
+          },
+          "actions": {
+            "Normalize_Body": {
+              "type": "Compose",
+              "inputs": "@replace(replace(replace(replace(replace(replace(replace(replace(triggerOutputs()?['body/body'],'<br>',decodeUriComponent('%0A')),'<br/>',decodeUriComponent('%0A')),'<br />',decodeUriComponent('%0A')),'</div>',decodeUriComponent('%0A')),'</p>',decodeUriComponent('%0A')),'<div>',''),'<p>',''),'&nbsp;',' ')",
+              "description": "Converts the HTML reply into plain text lines so the pipe block can be parsed."
+            },
+            "Compose_YV_Block": {
+              "type": "Compose",
+              "runAfter": {
+                "Normalize_Body": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": "@substring(outputs('Normalize_Body'),add(indexOf(outputs('Normalize_Body'),'###PGYV-START###'),16),sub(indexOf(outputs('Normalize_Body'),'###PGYV-END###'),add(indexOf(outputs('Normalize_Body'),'###PGYV-START###'),16)))",
+              "description": "Extracts the text between the FIRST ###PGYV-START### and ###PGYV-END### (the OSS answer, above any quoted original)."
+            },
+            "Split_Lines": {
+              "type": "Compose",
+              "runAfter": {
+                "Compose_YV_Block": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": "@split(outputs('Compose_YV_Block'),decodeUriComponent('%0A'))"
+            },
+            "Filter_Data_Lines": {
+              "type": "Query",
+              "runAfter": {
+                "Split_Lines": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": {
+                "from": "@outputs('Split_Lines')",
+                "where": "@and(contains(item(), '|'), and(not(contains(item(), 'Target QTY')), not(contains(item(), '###'))))"
+              }
+            },
+            "Build_Update_Rows": {
+              "type": "Select",
+              "runAfter": {
+                "Filter_Data_Lines": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": {
+                "from": "@body('Filter_Data_Lines')",
+                "select": "@concat('<tr><td>', trim(split(item(),'|')?[0]), '</td><td>', trim(split(item(),'|')?[1]), '</td><td>', trim(split(item(),'|')?[3]), '</td></tr>')"
+              },
+              "description": "Maps each data line (SO#|Line#|Target|Confirmed) to an HTML row using SO#, Line#, Confirmed Qty."
+            },
+            "Debug_OSS_YV_Update_JSON": {
+              "type": "Compose",
+              "runAfter": {
+                "Build_Update_Rows": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": "@concat('{\"subject\":\"Wakefern YV Quantity Update - ',formatDateTime(convertTimeZone(utcNow(),'UTC','Central America Standard Time'),'yyyy-MM-dd'),'\",\"body\":{\"contentType\":\"HTML\",\"content\":\"Hello,<br><br>Thank you. Please UPDATE the Target QTY to the Confirmed Qty for the following Wakefern YV lines:<br><br><table border=1 cellspacing=0 cellpadding=4><tr><th>SO #</th><th>Line #</th><th>New Target QTY (= Confirmed Qty)</th></tr>',join(body('Build_Update_Rows'),''),'</table><br><br>Regards,<br>pgcustservw2.im@pg.com<br>NA Order Management | Regional\"},\"toRecipients\":[{\"emailAddress\":{\"address\":\"ossgenai.im@pg.com\"}}]}')",
+              "description": "DEBUG: exact JSON for the OSS update draft."
+            },
+            "Create_OSS_YV_Update_HTTP": {
+              "type": "OpenApiConnection",
+              "runAfter": {
+                "Debug_OSS_YV_Update_JSON": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": {
+                "parameters": {
+                  "Uri": "https://graph.microsoft.com/v1.0/me/messages",
+                  "Method": "POST",
+                  "Body": "@json(outputs('Debug_OSS_YV_Update_JSON'))",
+                  "ContentType": "application/json"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "connectionName": "shared_office365",
+                  "operationId": "HttpRequest"
+                },
+                "authentication": "@parameters('$authentication')"
+              },
+              "description": "Creates the OSS YV update draft (Graph me/messages)."
+            },
+            "Send_OSS_YV_Update_HTTP": {
+              "type": "OpenApiConnection",
+              "runAfter": {
+                "Create_OSS_YV_Update_HTTP": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": {
+                "parameters": {
+                  "Uri": "@concat('https://graph.microsoft.com/v1.0/me/messages/', body('Create_OSS_YV_Update_HTTP')?['id'], '/send')",
+                  "Method": "POST",
+                  "Body": "@json('{}')",
+                  "ContentType": "application/json"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "connectionName": "shared_office365",
+                  "operationId": "HttpRequest"
+                },
+                "authentication": "@parameters('$authentication')"
+              },
+              "description": "Sends the OSS YV update draft (me/messages/{id}/send)."
+            },
+            "Debug_OSS_YV_Update_Create_Error": {
+              "type": "Compose",
+              "runAfter": {
+                "Create_OSS_YV_Update_HTTP": [
+                  "Failed",
+                  "TimedOut"
+                ]
+              },
+              "inputs": "@outputs('Create_OSS_YV_Update_HTTP')"
+            },
+            "Debug_OSS_YV_Update_Send_Error": {
+              "type": "Compose",
+              "runAfter": {
+                "Send_OSS_YV_Update_HTTP": [
+                  "Failed",
+                  "TimedOut"
+                ]
+              },
+              "inputs": "@outputs('Send_OSS_YV_Update_HTTP')"
+            }
+          }
+        }
+      },
+      "outputs": {}
+    },
+    "connectionReferences": {
+      "shared_office365": {
+        "connectionName": "shared-office365-89c9854a-cfbd-48e5-acd3-cb019798a1ee",
+        "source": "Embedded",
+        "id": "/providers/Microsoft.PowerApps/apis/shared_office365",
+        "tier": "NotSpecified",
+        "apiName": "office365",
+        "isProcessSimpleApiReferenceConversionAlreadyDone": false
+      }
+    },
+    "flowFailureAlertSubscribed": false,
+    "isManaged": false
+  }
+}
