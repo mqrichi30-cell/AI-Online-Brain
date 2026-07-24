@@ -52,37 +52,90 @@ Todo lo demás del prompt (READ SCOPE, exclusiones, formato de tabla de 1 column
 
 ---
 
-## Parte 2 — Nuevo flujo de Cancellation (PENDIENTE de datos)
+Además del cambio del prompt del 00, se **reestructuró** el prompt con un
+**orden de decisión explícito** (exclusiones → Wakefern Appointments →
+Cancellation → Consolidation → No Match), manteniendo el resto idéntico.
 
-Diseño propuesto, **consistente con la coreografía actual** (00 clasifica →
-OSSGenAI responde `ProcessType` → un flujo downstream actúa):
+## Parte 2 — Handler de Cancellation (LISTO)
+
+Paquete importable: **`AWG-Cancellation-Handler.zip`** (2 flujos), Office Script
+`office-script/FillCancellationForm.ts`, y el template en `template/`.
 
 ```
 [00] clasifica -> ProcessType = Cancellation
         │
         ▼
-[Cancellation-A]  (trigger: correo de ossgenai.im@pg.com con la tabla ProcessType)
-        │   - detecta ProcessType = Cancellation
-        │   - responde el hilo a OSSGenAI con un prompt de EXTRACCIÓN
-        │     (WORKFLOW=na_om_data_agent) exigiendo una "Formatted Table"
-        │     EXACTA con las órdenes a cancelar
+[CAN-01 Request]  (trigger: correo de ossgenai.im@pg.com, carpeta AWG)
+        │   - aisla la respuesta de OSS (split '<div id=divrplyfwdmsg>')
+        │   - si es clasificacion Cancellation, responde el hilo a OSSGenAI con
+        │     un prompt de EXTRACCION (WORKFLOW=na_om_data_agent) que exige:
+        │        ###CANCEL-START###
+        │        SalesOrderNumber|ReasonCode|ReasonForCancellation
+        │        ...
+        │        ###CANCEL-END###
+        │   - estampa AWG-STEP: CANCEL_EXTRACT (oculto)
+        │
+        │   (OSSGenAI tarda ~2-10 min)
         ▼
-[Cancellation-B]  (trigger: respuesta de OSSGenAI con la Formatted Table)
-        │   - parsea la tabla con el MISMO método del flujo 02
-        │     (Formatted Table -> </table> -> skip(split('<tr'),2) -> celdas </td>)
-        │   - arma el correo al RPA de cancelaciones
+[CAN-02 Fill & Send]  (trigger: respuesta de OSSGenAI con el bloque)
+        │   - normaliza HTML -> texto, extrae el bloque, parsea las filas
+        │   - copia el template, corre FillCancellationForm (llena A/B/C desde fila 3)
+        │   - adjunta el Excel y lo envia al RPA
         ▼
-   Correo al RPA  (Subject EXACTO + contacto EXACTO)
+   Correo al RPA  ->  To: nacsoshared.im@pg.com
+                       Subject: Order Cancellation Request
+                       Adjunto: Order_Cancellation_Form.xlsx (lleno)
 ```
 
-Esto reutiliza el parser de tablas ya probado en `AWG-CON-02` y el patrón de
-prompt/AWG-STEP del 00, para que la lectura sea siempre idéntica.
+### El template (Order Cancellation Form)
 
-### Necesito para construirlo
+| Col | Header exacto | Valores permitidos |
+|-----|---------------|--------------------|
+| A | `Sales Order Number ` | (los SO a cancelar) |
+| B | `Reason Code (Choose from drop Down)` | `03`, `05`, `HD` |
+| C | `Reason for cancelation (Choose from drop down) ` | `No longer needed`, `Duplicate order`, `Customer error`, `P&G error` |
 
-1. **Subject EXACTO** del correo al RPA de cancelaciones.
-2. **Contacto (email)** del RPA.
-3. **Identificador** que el RPA necesita por orden: `PO #`, `SO #`, `Delivery #` (o varios).
-4. **Formato que espera el RPA** en el cuerpo (¿tabla?, ¿bloque?, ¿un PO por línea?).
-5. (Opcional) ¿Extracción vía OSSGenAI como arriba (recomendado), o el flujo nuevo
-   debe parsear directamente el correo del cliente sin pasar de nuevo por OSSGenAI?
+Datos desde la fila 3. `FillCancellationForm` escribe solo VALORES, preservando
+el layout y los dropdowns.
+
+### Instalación (handler)
+
+1. **Sube el template** `template/Order_Cancellation_Form.xlsx` a **OneDrive** de
+   `marin.c@pg.com` en la raíz, con ese nombre exacto (path por defecto en el
+   flujo: `/Order_Cancellation_Form.xlsx`; si va en otra carpeta, ajusta el
+   parámetro `path` de `CAN_B_Get_Template_Content`).
+2. **Crea el Office Script** `FillCancellationForm` en Excel Online (pega
+   `office-script/FillCancellationForm.ts`) y copia su Script Id.
+3. **Importa** `AWG-Cancellation-Handler.zip` (Import Package / Legacy). Mapea:
+   Office 365 = `pgcustservw2.im@pg.com` (buzón AWG), OneDrive y Excel Online =
+   `marin.c@pg.com`.
+   > El `scriptId` de `CAN_B_Run_Fill_Script` apunta al script del 11s (referencia
+   > válida en `marin.c`) para que el paquete **importe**. Tras importar,
+   > **repunta** esa acción al `FillCancellationForm` real.
+4. **Activa** los dos flujos.
+
+### Anti-bucle / enrutamiento
+
+- CAN-01 solo actúa si la parte superior de la respuesta de OSS contiene
+  `processtype` + `cancellation` y **no** el bloque de extracción.
+- CAN-02 solo actúa si el correo contiene `###CANCEL-START###`/`###CANCEL-END###`.
+- El correo al RPA usa otro asunto (`Order Cancellation Request`) y no reentra por
+  estos triggers (que escuchan a `ossgenai.im@pg.com`).
+
+### Supuestos a VERIFICAR
+
+- **Mapeo Reason Code ↔ Reason:** los dropdowns B (`03/05/HD`) y C
+  (`No longer needed/...`) son independientes; **no conozco la correspondencia de
+  negocio**. El prompt pide a OSSGenAI elegir ambos según el correo y, si no hay
+  motivo, usa por defecto `03` + `No longer needed`. **Confírmame la tabla
+  código↔motivo** y ajusto el prompt/default.
+- **Identificador:** el RPA usa **Sales Order Number** (columna A). El prompt pide
+  "sales order / order / PO number". Si necesitas conversión PO→SO, hay que añadir
+  un paso.
+- **Adjunto:** `CAN_B_Send_To_RPA` usa `Send an email (V2)` con
+  `ContentBytes = @body('CAN_B_Get_Temp_Content')`. Si tu tenant exige base64
+  explícito, se cambia a `base64(...)`.
+
+El handler (CAN-01/02) es **independiente** (paquete legacy aparte) y no depende de
+tocar la solución managed; el único cambio dentro de la solución es el prompt del
+00 (Parte 1).

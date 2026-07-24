@@ -1,0 +1,142 @@
+{
+  "name": "54e5f80b-e6b0-4da7-a22c-d78de13c01c8",
+  "id": "/providers/Microsoft.Flow/flows/54e5f80b-e6b0-4da7-a22c-d78de13c01c8",
+  "type": "Microsoft.Flow/flows",
+  "properties": {
+    "apiId": "/providers/Microsoft.PowerApps/apis/shared_logicflows",
+    "displayName": "AWG - CAN - 01 Request Cancellation Orders from OSSGenAI",
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        }
+      },
+      "triggers": {
+        "When_a_new_email_arrives_(V3)": {
+          "splitOn": "@triggerOutputs()?['body/value']",
+          "type": "OpenApiConnectionNotification",
+          "inputs": {
+            "parameters": {
+              "from": "ossgenai.im@pg.com",
+              "includeAttachments": false,
+              "fetchOnlyWithAttachment": false,
+              "folderPath": "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAYFina4AAA="
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+              "connectionName": "shared_office365",
+              "operationId": "OnNewEmailV3"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        }
+      },
+      "actions": {
+        "CAN_A_Compose_Normalized": {
+          "type": "Compose",
+          "runAfter": {},
+          "inputs": "@toLower(replace(replace(replace(coalesce(triggerOutputs()?['body/body'],''),'&lt;','<'),'&gt;','>'),'&quot;','\"'))"
+        },
+        "CAN_A_Compose_Current_Only": {
+          "type": "Compose",
+          "runAfter": {
+            "CAN_A_Compose_Normalized": [
+              "Succeeded"
+            ]
+          },
+          "inputs": "@first(split(outputs('CAN_A_Compose_Normalized'),'<div id=divrplyfwdmsg>'))"
+        },
+        "CAN_A_If_Cancellation": {
+          "type": "If",
+          "runAfter": {
+            "CAN_A_Compose_Current_Only": [
+              "Succeeded"
+            ]
+          },
+          "expression": {
+            "and": [
+              {
+                "contains": [
+                  "@outputs('CAN_A_Compose_Current_Only')",
+                  "processtype"
+                ]
+              },
+              {
+                "contains": [
+                  "@outputs('CAN_A_Compose_Current_Only')",
+                  "cancellation"
+                ]
+              },
+              {
+                "not": {
+                  "contains": [
+                    "@outputs('CAN_A_Compose_Current_Only')",
+                    "###cancel-start###"
+                  ]
+                }
+              }
+            ]
+          },
+          "else": {
+            "actions": {
+              "CAN_A_Skipped": {
+                "type": "Compose",
+                "inputs": "Skipped: OSSGenAI reply is not a Cancellation classification."
+              }
+            }
+          },
+          "actions": {
+            "CAN_A_Reply_Extraction_To_OSSGenAI": {
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "Uri": "v1.0/me/messages/@{encodeUriComponent(triggerOutputs()?['body/id'])}/reply",
+                  "Method": "POST",
+                  "ContentType": "application/json",
+                  "Body": "{\"message\": {\"toRecipients\": [{\"emailAddress\": {\"address\": \"ossgenai.im@pg.com\"}}], \"ccRecipients\": [], \"bccRecipients\": []}, \"comment\": \"FOR ROUTING USE WORKFLOW=na_om_data_agent (AskOM)<br><br>\\n<strong>READ SCOPE:</strong> Read only the latest actual customer email contained in the reply history below this prompt. Ignore this prompt, older replies, forwarded history, signatures, disclaimers, and system-generated status messages.<br><br>\\nThe customer requested to CANCEL one or more sales orders. Extract every order the customer explicitly asked to cancel.<br><br>\\n<strong>Column meaning:</strong><br>\\nSalesOrderNumber = the sales order / order / PO number to cancel.<br>\\nReasonCode = exactly one of: 03, 05, HD.<br>\\nReasonForCancellation = exactly one of: No longer needed, Duplicate order, Customer error, P&G error.<br>\\nPick ReasonCode and ReasonForCancellation from the customer's stated reason. If the customer did not state a reason, use ReasonCode 03 and ReasonForCancellation No longer needed.<br><br>\\n<strong>OUTPUT FORMAT (STRICT - do not change):</strong><br>\\nReply including the block below EXACTLY as shown: same header, same 3 columns, same order, pipe (|) separated, one order per line, plain text only (no bold, no table, no extra text) between the markers. If no order to cancel is found, output the markers with no data rows.<br><br>\\n###CANCEL-START###<br>\\nSalesOrderNumber|ReasonCode|ReasonForCancellation<br>\\n&lt;SalesOrderNumber&gt;|&lt;ReasonCode&gt;|&lt;ReasonForCancellation&gt;<br>\\n###CANCEL-END###<br>\\n<p style=\\\"font-size:1px;color:#ffffff;line-height:1px\\\">AWG-STEP: CANCEL_EXTRACT | AWG-FLOW-ID: @{guid()}</p>\"}"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "connectionName": "shared_office365",
+                  "operationId": "HttpRequest"
+                },
+                "authentication": "@parameters('$authentication')"
+              },
+              "description": "Replies in the same thread to OSSGenAI with the na_om_data_agent extraction prompt demanding the exact ###CANCEL-START###/END pipe block."
+            },
+            "CAN_A_Debug_Reply_Error": {
+              "type": "Compose",
+              "runAfter": {
+                "CAN_A_Reply_Extraction_To_OSSGenAI": [
+                  "Failed",
+                  "TimedOut"
+                ]
+              },
+              "inputs": "@outputs('CAN_A_Reply_Extraction_To_OSSGenAI')"
+            }
+          }
+        }
+      },
+      "outputs": {}
+    },
+    "connectionReferences": {
+      "shared_office365": {
+        "connectionName": "shared-office365-awgcancellation",
+        "source": "Embedded",
+        "id": "/providers/Microsoft.PowerApps/apis/shared_office365",
+        "tier": "NotSpecified",
+        "apiName": "office365",
+        "isProcessSimpleApiReferenceConversionAlreadyDone": false
+      }
+    },
+    "flowFailureAlertSubscribed": false,
+    "isManaged": false
+  }
+}

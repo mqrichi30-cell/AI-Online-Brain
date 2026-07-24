@@ -1,0 +1,315 @@
+{
+  "name": "59f7d707-b60b-41cb-8abe-a34868a457fa",
+  "id": "/providers/Microsoft.Flow/flows/59f7d707-b60b-41cb-8abe-a34868a457fa",
+  "type": "Microsoft.Flow/flows",
+  "properties": {
+    "apiId": "/providers/Microsoft.PowerApps/apis/shared_logicflows",
+    "displayName": "AWG - CAN - 02 Fill Form and Send to Cancellation RPA",
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        }
+      },
+      "triggers": {
+        "When_a_new_email_arrives_(V3)": {
+          "splitOn": "@triggerOutputs()?['body/value']",
+          "type": "OpenApiConnectionNotification",
+          "inputs": {
+            "parameters": {
+              "from": "ossgenai.im@pg.com",
+              "includeAttachments": false,
+              "fetchOnlyWithAttachment": false,
+              "folderPath": "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAYFina4AAA="
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+              "connectionName": "shared_office365",
+              "operationId": "OnNewEmailV3"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        }
+      },
+      "actions": {
+        "CAN_B_Has_Cancel_Block": {
+          "type": "If",
+          "runAfter": {},
+          "expression": {
+            "and": [
+              {
+                "contains": [
+                  "@toLower(coalesce(triggerOutputs()?['body/body'],''))",
+                  "###cancel-start###"
+                ]
+              },
+              {
+                "contains": [
+                  "@toLower(coalesce(triggerOutputs()?['body/body'],''))",
+                  "###cancel-end###"
+                ]
+              }
+            ]
+          },
+          "else": {
+            "actions": {
+              "CAN_B_No_Block": {
+                "type": "Compose",
+                "inputs": "Skipped: OSSGenAI reply did not contain the ###CANCEL-START###/END block."
+              }
+            }
+          },
+          "actions": {
+            "CAN_B_Normalize_Body": {
+              "type": "Compose",
+              "inputs": "@replace(replace(replace(replace(replace(replace(replace(replace(triggerOutputs()?['body/body'],'<br>',decodeUriComponent('%0A')),'<br/>',decodeUriComponent('%0A')),'<br />',decodeUriComponent('%0A')),'</div>',decodeUriComponent('%0A')),'</p>',decodeUriComponent('%0A')),'<div>',''),'<p>',''),'&nbsp;',' ')",
+              "description": "HTML reply -> plain text lines so the pipe block can be parsed."
+            },
+            "CAN_B_Compose_Block": {
+              "type": "Compose",
+              "runAfter": {
+                "CAN_B_Normalize_Body": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": "@substring(outputs('CAN_B_Normalize_Body'),add(indexOf(outputs('CAN_B_Normalize_Body'),'###CANCEL-START###'),18),sub(indexOf(outputs('CAN_B_Normalize_Body'),'###CANCEL-END###'),add(indexOf(outputs('CAN_B_Normalize_Body'),'###CANCEL-START###'),18)))",
+              "description": "Text between the FIRST ###CANCEL-START### and ###CANCEL-END### (OSS answer, above quoted history)."
+            },
+            "CAN_B_Split_Lines": {
+              "type": "Compose",
+              "runAfter": {
+                "CAN_B_Compose_Block": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": "@split(outputs('CAN_B_Compose_Block'),decodeUriComponent('%0A'))"
+            },
+            "CAN_B_Filter_Data_Lines": {
+              "type": "Query",
+              "runAfter": {
+                "CAN_B_Split_Lines": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": {
+                "from": "@outputs('CAN_B_Split_Lines')",
+                "where": "@and(contains(item(), '|'), and(not(contains(item(), 'SalesOrderNumber')), not(contains(item(), '###'))))"
+              }
+            },
+            "CAN_B_Compose_Rows_Text": {
+              "type": "Compose",
+              "runAfter": {
+                "CAN_B_Filter_Data_Lines": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": "@join(body('CAN_B_Filter_Data_Lines'),decodeUriComponent('%0A'))",
+              "description": "One order per line (SalesOrderNumber|ReasonCode|ReasonForCancellation) passed to FillCancellationForm."
+            },
+            "CAN_B_If_Has_Rows": {
+              "type": "If",
+              "runAfter": {
+                "CAN_B_Compose_Rows_Text": [
+                  "Succeeded"
+                ]
+              },
+              "expression": {
+                "and": [
+                  {
+                    "greater": [
+                      "@length(body('CAN_B_Filter_Data_Lines'))",
+                      0
+                    ]
+                  }
+                ]
+              },
+              "else": {
+                "actions": {
+                  "CAN_B_No_Rows": {
+                    "type": "Compose",
+                    "inputs": "Skipped: no orders to cancel were found in the block."
+                  }
+                }
+              },
+              "actions": {
+                "CAN_B_Get_Template_Content": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "parameters": {
+                      "path": "/Order_Cancellation_Form.xlsx"
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
+                      "connectionName": "shared_onedriveforbusiness",
+                      "operationId": "GetFileContentByPath"
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  },
+                  "description": "Reads the Order Cancellation Form template from OneDrive (upload it to this path first)."
+                },
+                "CAN_B_Create_Temp_File": {
+                  "type": "OpenApiConnection",
+                  "runAfter": {
+                    "CAN_B_Get_Template_Content": [
+                      "Succeeded"
+                    ]
+                  },
+                  "inputs": {
+                    "parameters": {
+                      "folderPath": "/",
+                      "name": "@concat('Order_Cancellation_Request_', formatDateTime(utcNow(),'yyyyMMdd_HHmmssfff'), '.xlsx')",
+                      "body": "@body('CAN_B_Get_Template_Content')"
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
+                      "connectionName": "shared_onedriveforbusiness",
+                      "operationId": "CreateFile"
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  }
+                },
+                "CAN_B_Run_Fill_Script": {
+                  "type": "OpenApiConnection",
+                  "runAfter": {
+                    "CAN_B_Create_Temp_File": [
+                      "Succeeded"
+                    ]
+                  },
+                  "inputs": {
+                    "parameters": {
+                      "source": "me",
+                      "drive": "me",
+                      "file": "@outputs('CAN_B_Create_Temp_File')?['body/Id']",
+                      "scriptId": "ms-officescript%3A%2F%2Fonedrive_business_itemlink%2F01DYYVZGXRHHDY4HR32VGID4O5BXO2MOKB",
+                      "ScriptParameters/rowsText": "@outputs('CAN_B_Compose_Rows_Text')"
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
+                      "connectionName": "shared_excelonlinebusiness",
+                      "operationId": "RunScriptProd"
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  },
+                  "description": "Runs FillCancellationForm to write SO/Code/Reason into the template. scriptId is the 11s script as a valid placeholder; repoint to FillCancellationForm after import."
+                },
+                "CAN_B_Get_Temp_Content": {
+                  "type": "OpenApiConnection",
+                  "runAfter": {
+                    "CAN_B_Run_Fill_Script": [
+                      "Succeeded"
+                    ]
+                  },
+                  "inputs": {
+                    "parameters": {
+                      "id": "@outputs('CAN_B_Create_Temp_File')?['body/Id']"
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
+                      "connectionName": "shared_onedriveforbusiness",
+                      "operationId": "GetFileContent"
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  }
+                },
+                "CAN_B_Send_To_RPA": {
+                  "type": "OpenApiConnection",
+                  "runAfter": {
+                    "CAN_B_Get_Temp_Content": [
+                      "Succeeded"
+                    ]
+                  },
+                  "inputs": {
+                    "parameters": {
+                      "emailMessage/To": "nacsoshared.im@pg.com",
+                      "emailMessage/Subject": "Order Cancellation Request",
+                      "emailMessage/Body": "<p>Hello,</p><p>Please find attached the Order Cancellation Request.</p><p>Regards,<br>NA Order Management | Regional</p>",
+                      "emailMessage/Importance": "Normal",
+                      "emailMessage/Attachments": [
+                        {
+                          "Name": "Order_Cancellation_Form.xlsx",
+                          "ContentBytes": "@body('CAN_B_Get_Temp_Content')"
+                        }
+                      ]
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                      "connectionName": "shared_office365",
+                      "operationId": "SendEmailV2"
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  },
+                  "description": "Emails the filled template to the cancellation RPA (nacsoshared.im@pg.com) with subject 'Order Cancellation Request'."
+                },
+                "CAN_B_Delete_Temp_File": {
+                  "type": "OpenApiConnection",
+                  "runAfter": {
+                    "CAN_B_Send_To_RPA": [
+                      "Succeeded"
+                    ]
+                  },
+                  "inputs": {
+                    "parameters": {
+                      "id": "@outputs('CAN_B_Create_Temp_File')?['body/Id']"
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
+                      "connectionName": "shared_onedriveforbusiness",
+                      "operationId": "DeleteFile"
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  }
+                },
+                "CAN_B_Debug_Send_Error": {
+                  "type": "Compose",
+                  "runAfter": {
+                    "CAN_B_Send_To_RPA": [
+                      "Failed",
+                      "TimedOut"
+                    ]
+                  },
+                  "inputs": "@outputs('CAN_B_Send_To_RPA')"
+                }
+              }
+            }
+          }
+        }
+      },
+      "outputs": {}
+    },
+    "connectionReferences": {
+      "shared_office365": {
+        "connectionName": "shared-office365-awgcancellation",
+        "source": "Embedded",
+        "id": "/providers/Microsoft.PowerApps/apis/shared_office365",
+        "tier": "NotSpecified",
+        "apiName": "office365",
+        "isProcessSimpleApiReferenceConversionAlreadyDone": false
+      },
+      "shared_onedriveforbusiness": {
+        "connectionName": "shared-onedriveforbu-awgcancellation",
+        "source": "Embedded",
+        "id": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
+        "tier": "NotSpecified",
+        "apiName": "onedriveforbusiness",
+        "isProcessSimpleApiReferenceConversionAlreadyDone": false
+      },
+      "shared_excelonlinebusiness": {
+        "connectionName": "shared-excelonlinebu-awgcancellation",
+        "source": "Embedded",
+        "id": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
+        "tier": "NotSpecified",
+        "apiName": "excelonlinebusiness",
+        "isProcessSimpleApiReferenceConversionAlreadyDone": false
+      }
+    },
+    "flowFailureAlertSubscribed": false,
+    "isManaged": false
+  }
+}
