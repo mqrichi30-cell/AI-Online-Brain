@@ -106,7 +106,7 @@
                       "source": "me",
                       "drive": "me",
                       "file": "@outputs('Create_Temp_Excel_File')?['body/Id']",
-                      "scriptId": "PASTE_YV_OFFICE_SCRIPT_ID_HERE"
+                      "scriptId": "ms-officescript%3A%2F%2Fonedrive_business_itemlink%2F01DYYVZGXRHHDY4HR32VGID4O5BXO2MOKB"
                     },
                     "host": {
                       "apiId": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
@@ -115,7 +115,7 @@
                     },
                     "authentication": "@parameters('$authentication')"
                   },
-                  "description": "Runs Office Script ProcessWakefernYV against the temp Excel. Filters Del Blk Indicator = YV and RDD between today and today+10. REPLACE scriptId placeholder with the real Office Script id."
+                  "description": "Runs Office Script ProcessWakefernYV against the temp Excel. Filters Del Blk Indicator = YV and RDD between today and today+10. IMPORTANT: scriptId currently points to the 11s script as a valid placeholder so the package imports; after importing, repoint this action to the real ProcessWakefernYV script."
                 },
                 "Compose_YV_Script_Result": {
                   "type": "Compose",

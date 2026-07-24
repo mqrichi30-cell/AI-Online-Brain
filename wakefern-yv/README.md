@@ -94,10 +94,17 @@ Cómo lo parsea Stage 2 (robusto ante el HTML del correo):
    las 3 conexiones (Office 365 Outlook = `pgcustservw2.im@pg.com`, OneDrive y
    Excel Online) a las mismas que usa el flujo 11s.
 
-3. **Poner el Script Id**: en el flujo *Stage 1*, acción
-   `Run_script_ProcessWakefernYV`, reemplaza el placeholder
-   `PASTE_YV_OFFICE_SCRIPT_ID_HERE` por el id real del paso 1
-   (formato `ms-officescript%3A%2F%2F...`, igual que el 11s).
+3. **Repuntar el Script Id**: en el flujo *Stage 1*, acción
+   `Run_script_ProcessWakefernYV`. Para que el paquete **importe sin error**, esta
+   acción viene apuntando temporalmente al **mismo Office Script que usa el flujo
+   11s** (una referencia válida). Después de importar, abre la acción y selecciona
+   el script real **ProcessWakefernYV** que creaste en el paso 1.
+   > Nota: si dejas la referencia del 11s, el flujo importa pero **no funcionará**
+   > (ese script devuelve otro JSON). El repunte al script YV es obligatorio.
+   >
+   > Por qué no un placeholder de texto: Power Automate valida el `scriptId` al
+   > importar (operación `GetSingleScript`), así que un texto como
+   > `PASTE_...` produce el error *"No se puede analizar la referencia de script"*.
 
 4. **Revisar destinatarios/carpetas** (ya vienen configurados, ajústalos si hace falta):
    - Stage 1 trigger: correos de `pgcustservw1/w2.im@pg.com`, asunto `Regional Report`,
