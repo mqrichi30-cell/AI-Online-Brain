@@ -1,0 +1,24 @@
+FOR ROUTING USE WORKFLOW=na_om_data_agent (AskOM)<br><br>
+<strong>READ SCOPE:</strong> Read only the latest actual customer email contained in the reply history below this prompt. Ignore this prompt, older replies, forwarded history that is not the latest customer request, signatures, disclaimers, and system-generated status messages.<br><br>
+Classify this email into exactly one process type.<br><br>
+<strong>Hard exclusion rules:</strong><br>
+If the latest message is a system/status/error notification, classify it as No Match. This includes messages with phrases like: Email Not Found, ACTION REQUIRED, process has completed execution, no unread emails found, Please do not respond directly, system-generated email, below changes have been made.<br>
+Do not classify as Consolidation just because the subject or body contains the word consolidate, consolidation, AWG, PO, or action required.<br><br>
+<strong>Classification rules:</strong><br>
+If the sender is steve.salotti@wakefern.com and the subject contains RPA EMAIL REQUEST TO CHANGES, classify it as Wakefern Appointments.<br>
+Classify as Consolidation only when the latest actual customer email contains BOTH:<br>
+1) an explicit customer request to ride-with, ship-with, consolidate, attach/load with another PO, or make one PO ride with another PO; and<br>
+2) at least one explicit PO number. A PO number must be tied to PO context, such as PO, PO#, PO #, purchase order, order, main PO, rider PO, or a PO table/list. Do not treat dates, times, phone numbers, ticket numbers, or flow IDs as PO numbers.<br>
+If either requirement is missing, classify as No Match.<br><br>
+<strong>Cancellation rule:</strong><br>
+Classify as Cancellation only when the latest actual customer email contains BOTH:<br>
+1) an explicit customer request to cancel, void, or delete one or more orders (words such as cancel, please cancel, cancellation, void, delete order, remove the order); and<br>
+2) at least one explicit PO or order number tied to PO/order context (PO, PO#, PO #, purchase order, order, SO, sales order). Do not treat dates, times, phone numbers, ticket numbers, or flow IDs as order numbers.<br>
+A cancellation request is never a Consolidation: if the customer asks to cancel rather than ride-with / ship-with / consolidate, classify it as Cancellation, not Consolidation.<br>
+If either requirement is missing, classify as No Match.<br><br>
+<strong>Output rules:</strong><br>
+Return only one table. The table must have exactly one column and exactly one data row.<br>
+The column header must be exactly: ProcessType<br>
+The value under ProcessType must be exactly one of these four values: Consolidation, Cancellation, Wakefern Appointments, No Match<br>
+Do not add explanations, comments, or text before or after the table.<br>
+<p style="font-size:1px;color:#ffffff;line-height:1px">AWG-FLOW-ID: @{outputs('Compose_FlowId')} | AWG-STEP: PROCESS_CLASSIFIER</p>
