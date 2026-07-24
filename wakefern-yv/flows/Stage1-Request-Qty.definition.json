@@ -115,7 +115,7 @@
                     },
                     "authentication": "@parameters('$authentication')"
                   },
-                  "description": "Runs Office Script ProcessWakefernYV against the temp Excel. Filters Del Blk Indicator = YV and RDD between today and today+10. IMPORTANT: scriptId currently points to the 11s script as a valid placeholder so the package imports; after importing, repoint this action to the real ProcessWakefernYV script."
+                  "description": "Runs ProcessWakefernYV (Del Blk Indicator = YV, RDD today..today+10). scriptId points to the 11s script as a valid placeholder so the package imports; repoint to the real ProcessWakefernYV after import."
                 },
                 "Compose_YV_Script_Result": {
                   "type": "Compose",
