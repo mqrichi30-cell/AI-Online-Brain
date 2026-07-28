@@ -151,30 +151,49 @@ reproceso duplicaba filas. Se agregó:
 - `item/Ship to Name` se guarda con `@trim(...)`, y la columna *Sold to* se deja
   vacía a propósito.
 
-## Limpieza de la Contacts Data Base
+## La Contacts Data Base NO se debe deduplicar
 
-Las filas ya generadas siguen envenenando el match aunque el código esté
-corregido: mientras exista una fila con nombre y email vacío, o un Title
-combinado, el Ship-to correspondiente se seguirá pidiendo. Hay que dejar **una
-fila por Ship-to**:
+> Corrección: una versión anterior de este documento decía que había que
+> colapsar la tabla a una fila por Ship-to. **Eso es incorrecto y destruiría
+> datos.** Lo que sigue reemplaza esa instrucción.
 
-1. Borrar las filas cuyo `Ship to Name` contenga `/` (los Titles combinados).
-2. Borrar las filas con `Ship to Name` lleno y `Email to` vacío.
-3. Quedarse con un solo registro por `Ship to Name` y vaciar la columna
-   *Sold to* en el que sobrevive.
+El volcado real de la tabla (256 filas, ejecución del 2026-07-28 11:42) muestra
+que **no hay duplicados**: la tabla está legítimamente llave-ada por
+**Ship-to × Category**, y el CC cambia por categoría porque es el contacto
+interno de P&G de esa categoría.
 
-En el ejemplo del screenshot, las 9 filas AWG colapsan a 3:
+Columnas reales (16): `ION`, `OMA`, `Sales Office`, `Sales Group`,
+`Sold to _x0023_`, `Ship to _x0023_`, `Sold to Name`, `Ship to Name`,
+`Category`, `Buyer Name`, `Email to`, `CC`, `Other`, `Notes`, más
+`@odata.etag` e `ItemInternalId` del conector.
 
-| Sold to | Ship to Name | Email to |
-|---|---|---|
-| *(vacío)* | AWG - OKLAHOMA CITY | mike.bourdelais@awginc.com |
-| *(vacío)* | AWG - GREAT LAKES DIV | dave.scanlan@awginc.com |
-| *(vacío)* | AWG - SPRINGFIELD | mike.bourdelais@awginc.com |
+```
+AWG Great Lakes | FamilyCare  | dave.scanlan@awginc.com | CC: …;bright.al@pg.com
+AWG Great Lakes | HairCare    | dave.scanlan@awginc.com | CC: …;grant.t.2@pg.com
+AWG Great Lakes | OralCare    | dave.scanlan@awginc.com | CC: …;prettejohn.jl@pg.com
+```
 
-> `AWG - GREAT LAKES DIV` aparece con dos destinatarios distintos
-> (`dave.scanlan@awginc.com` y `dave.scanlan@awginc.com; nam.le…`). Al colapsar
-> hay que decidir cuál es el bueno — el código ya no lo elige al azar, pero
-> tampoco puede adivinar.
+28 Ship-tos × ~9 categorías ≈ 256 filas. Todas las filas de un mismo Ship-to
+comparten el mismo `Email to`, así que deduplicar por Ship-to para resolver el
+destinatario (lo que hace el script) es correcto; **borrar filas de la tabla no
+lo es** — se perdería el ruteo de CC por categoría, y la tabla la consumen otros
+procesos además de este.
+
+### Lo que sí hay que revisar
+
+**1. El flow escribe filas incompletas.** `Add contact row` solo llena
+`Ship to Name` y `Email to`; las otras 12 columnas quedan vacías, sin `Category`
+ni `CC`. Eso ensucia una tabla maestra compartida. Decidir si el flow debe
+seguir escribiendo ahí o registrar el contacto en otro lado.
+
+**2. Los nombres de Ship-to no coinciden entre el reporte y la tabla.** En la
+tabla: `AWG Great Lakes`, `AWG Gulf Coast`, `AWG Hernando`, `AWG - KANSAS CITY`,
+`AWG Nashville`. En el reporte semanal: `AWG - GREAT LAKES DIV`,
+`AWG - NASHVILLE`, `AWG - OKLAHOMA CITY`, `AWG - SPRINGFIELD`. `normName()` solo
+normaliza mayúsculas y espacios — no reconcilia `AWG GREAT LAKES` con
+`AWG - GREAT LAKES DIV`. **Esta es la causa candidata más fuerte de que el
+contacto se pida cada semana**, y se resuelve alineando los nombres, no tocando
+el código.
 
 ## Cómo desplegar
 
@@ -190,8 +209,9 @@ hay que volver a seleccionar Location / Document Library / File / Table en
 **List existing contacts** — los `drive`/`file`/`table` importados son IDs y el
 diseñador pide re-bindearlos.
 
-**Orden sugerido**: script → flow del reporte → flow de contactos → limpieza de
-la tabla → correr una semana en observación.
+**Orden sugerido**: script → flow del reporte → flow de contactos → alinear los
+nombres de Ship-to entre el reporte y la tabla → correr una semana en
+observación.
 
 ## Tests
 
