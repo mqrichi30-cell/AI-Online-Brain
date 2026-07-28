@@ -151,49 +151,84 @@ reproceso duplicaba filas. Se agregó:
 - `item/Ship to Name` se guarda con `@trim(...)`, y la columna *Sold to* se deja
   vacía a propósito.
 
-## La Contacts Data Base NO se debe deduplicar
+## CAUSA RAÍZ REAL: el conector Excel trunca a 256 filas
 
-> Corrección: una versión anterior de este documento decía que había que
-> colapsar la tabla a una fila por Ship-to. **Eso es incorrecto y destruiría
-> datos.** Lo que sigue reemplaza esa instrucción.
+> Esta sección reemplaza dos diagnósticos anteriores de este documento, ambos
+> incorrectos: el de "deduplicar la tabla" y el de "los nombres no coinciden".
 
-El volcado real de la tabla (256 filas, ejecución del 2026-07-28 11:42) muestra
-que **no hay duplicados**: la tabla está legítimamente llave-ada por
-**Ship-to × Category**, y el CC cambia por categoría porque es el contacto
-interno de P&G de esa categoría.
+La *Regional Team – Contacts Data Base* (hoja `Contacts`, tabla `Table15`) tiene
+**946 filas de datos y 83 Ship-tos distintos**. La acción `List contacts` del
+flow del reporte devolvió **256 filas exactas** en la ejecución del 2026-07-28.
 
-Columnas reales (16): `ION`, `OMA`, `Sales Office`, `Sales Group`,
-`Sold to _x0023_`, `Ship to _x0023_`, `Sold to Name`, `Ship to Name`,
-`Category`, `Buyer Name`, `Email to`, `CC`, `Other`, `Notes`, más
-`@odata.etag` e `ItemInternalId` del conector.
+256 es el tamaño de página por defecto del conector **Excel Online (Business)**.
+`$top: 10000` no lo sobrescribe: para pasar de 256 hay que activar
+**Settings → Pagination** en la acción. Sin eso, el script solo ve el principio
+de la tabla y **todo Ship-to que viva después de la fila 256 es invisible**.
 
-```
-AWG Great Lakes | FamilyCare  | dave.scanlan@awginc.com | CC: …;bright.al@pg.com
-AWG Great Lakes | HairCare    | dave.scanlan@awginc.com | CC: …;grant.t.2@pg.com
-AWG Great Lakes | OralCare    | dave.scanlan@awginc.com | CC: …;prettejohn.jl@pg.com
-```
+Correlación con la ejecución real del 2026-07-28 07:43 — 8 de 8:
 
-28 Ship-tos × ~9 categorías ≈ 256 filas. Todas las filas de un mismo Ship-to
-comparten el mismo `Email to`, así que deduplicar por Ship-to para resolver el
-destinatario (lo que hace el script) es correcto; **borrar filas de la tabla no
-lo es** — se perdería el ruteo de CC por categoría, y la tabla la consumen otros
-procesos además de este.
+| Ship-to del reporte | 1ª fila en la tabla | ≤ 256 | `matched` |
+|---|---:|---|---|
+| AWG  GULF COAST | 55 | sí | **true** |
+| AWG - KANSAS CITY | 73 | sí | **true** |
+| AWG ST. CLOUD | 118 | sí | **true** |
+| AWG - OKLAHOMA CITY | 931 | no | false |
+| AWG - GREAT LAKES DIV | 934 | no | false |
+| AWG - NASHVILLE | 940 | no | false |
+| AWG NEBRASKA | 942 | no | false |
+| CREST FOODS | 943 | no | false |
 
-### Lo que sí hay que revisar
+El corte es exactamente la fila 256. No hay ni un caso fuera del patrón.
 
-**1. El flow escribe filas incompletas.** `Add contact row` solo llena
-`Ship to Name` y `Email to`; las otras 12 columnas quedan vacías, sin `Category`
-ni `CC`. Eso ensucia una tabla maestra compartida. Decidir si el flow debe
-seguir escribiendo ahí o registrar el contacto en otro lado.
+Esto explica el síntoma completo, incluido el bucle:
 
-**2. Los nombres de Ship-to no coinciden entre el reporte y la tabla.** En la
-tabla: `AWG Great Lakes`, `AWG Gulf Coast`, `AWG Hernando`, `AWG - KANSAS CITY`,
-`AWG Nashville`. En el reporte semanal: `AWG - GREAT LAKES DIV`,
-`AWG - NASHVILLE`, `AWG - OKLAHOMA CITY`, `AWG - SPRINGFIELD`. `normName()` solo
-normaliza mayúsculas y espacios — no reconcilia `AWG GREAT LAKES` con
-`AWG - GREAT LAKES DIV`. **Esta es la causa candidata más fuerte de que el
-contacto se pida cada semana**, y se resuelve alineando los nombres, no tocando
-el código.
+1. El script no ve el Ship-to → `matched = false` → se crea un Pending.
+2. Alguien llena `ContactEmail` → el flow horario **agrega una fila al final**
+   de la tabla, o sea en la zona invisible (filas 931+).
+3. La semana siguiente el script sigue sin verla → vuelve a pedir el contacto.
+
+Por eso el final de la tabla acumula filas con solo `Ship to Name` y `Email to`
+llenos: son los intentos de las semanas anteriores, todos inútiles porque caen
+fuera de la ventana de 256.
+
+### La corrección
+
+Activar la paginación en las **dos** acciones que leen la tabla:
+
+- `List contacts` en `AWG - Ship with POs Repot`
+- `List existing contacts` en `AWG ShipWith - Add Contact & Send`
+
+En cada una: **Settings → Pagination → On**, con Threshold ≥ 5000. `$top` puede
+quedarse como está.
+
+Sin esto, ningún cambio en el Office Script sirve: el script no puede emparejar
+contra filas que nunca recibe.
+
+### Lo que NO hay que hacer
+
+**No agregar filas alias.** Ya existen: `AWG - GREAT LAKES DIV` (fila 934),
+`AWG - NASHVILLE` (940), `AWG - OKLAHOMA CITY` (931), `AWG NEBRASKA` (942),
+`CREST FOODS` (943), `AWG - SPRINGFIELD`. Con la paginación activa el script las
+encuentra.
+
+**No deduplicar la tabla.** Está legítimamente llaveada por Ship-to × Category y
+la consumen otros procesos; el CC varía por categoría.
+
+### Pendiente de datos
+
+Las filas alias, creadas semana a semana por el flow, traen correos que no
+siempre coinciden con los de la fila original:
+
+| Ship-to | `Email to` |
+|---|---|
+| `AWG Great Lakes` (fila 12) | dave.scanlan@awginc.com |
+| `AWG - GREAT LAKES DIV` (fila 934) | mike.bourdelais@awginc.com |
+| `AWG Nashville` | jaymee.thomas@awginc.com |
+| `AWG - NASHVILLE` (fila 940) | derek.perisho@awginc.com |
+
+Con la paginación activa ambas versiones se vuelven visibles como contactos
+distintos, y el reporte solo usa la ortografía con guion. Hay que decidir cuál
+destinatario es el correcto para cada una.
 
 ## Cómo desplegar
 
