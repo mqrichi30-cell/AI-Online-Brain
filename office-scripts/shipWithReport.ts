@@ -16,13 +16,22 @@
  * It intentionally does NOT send or draft anything itself — Office Scripts
  * cannot. The flow turns each returned item into a draft in the shared mailbox.
  *
+ * Contact identity
+ *   A contact is keyed on the NORMALISED SHIP-TO NAME and nothing else. The
+ *   Sold-to never participates: it is excluded from header resolution so it can
+ *   never be read as a Ship-to, and it is never part of a grouping key. Every
+ *   unmatched Ship-to yields exactly one draft, so the flow creates exactly one
+ *   Pending row per Ship-to and `shipTo` below is always a single clean name.
+ *
  * Parameters
  *   workbook      - the report workbook (bound by the "Run script" action).
  *   contactsJson  - JSON string: [{ "name": "...", "email": "..." }, ...]
  *                   Built by the flow from the Contacts Data Base table.
  *   signatureHtml - optional HTML signature appended to every draft.
  *
- * Returns  DraftEmail[]  ->  [{ to, cc, subject, htmlBody, matched }]
+ * Returns  DraftEmail[]  ->  [{ to, cc, subject, shipTo, shipTos, htmlBody, matched }]
+ *   `shipTo` is the value the flow must write into the Contacts Data Base when
+ *   `matched` is false. Do NOT derive it from `subject`.
  */
 
 interface Contact {
@@ -34,6 +43,10 @@ interface DraftEmail {
     to: string;
     cc: string;
     subject: string;
+    /** Canonical Ship-to for this draft. Exactly one name when matched === false. */
+    shipTo: string;
+    /** Every Ship-to folded into this draft (length 1 when matched === false). */
+    shipTos: string[];
     htmlBody: string;
     matched: boolean;
 }
@@ -72,32 +85,54 @@ function main(
 
     // --- Locate columns by header (tolerant to reordering) --------------------
     const header = values[0].map((h) => String(h).trim().toLowerCase());
-    const col = (...aliases: string[]): number => {
+
+    /**
+     * Resolves a column index by header.
+     *   - exact alias match first, then partial (contains) match;
+     *   - `blocked` header indexes are never returned, so a Sold-to column can
+     *     never be picked up by the Ship-to lookup's partial pass.
+     */
+    const col = (aliases: string[], blocked: number[] = []): number => {
+        const usable = (idx: number): boolean => idx >= 0 && blocked.indexOf(idx) < 0;
         for (const a of aliases) {
-            const idx = header.findIndex((h) => h === a.toLowerCase());
-            if (idx >= 0) return idx;
+            const needle = a.toLowerCase();
+            for (let i = 0; i < header.length; i++) {
+                if (header[i] === needle && usable(i)) return i;
+            }
         }
-        // fallback: partial contains
         for (const a of aliases) {
-            const idx = header.findIndex((h) => h.indexOf(a.toLowerCase()) >= 0);
-            if (idx >= 0) return idx;
+            const needle = a.toLowerCase();
+            for (let i = 0; i < header.length; i++) {
+                if (header[i].indexOf(needle) >= 0 && usable(i)) return i;
+            }
         }
         return -1;
     };
 
-    const cDb = col("db", "delivery block");
-    const cCreated = col("created_on", "created on");
-    const cGi = col("goods issue date", "gi");
-    const cRdd = col("rdd", "requested delivery date");
-    const cPlant = col("plant");
-    const cMix = col("material mix");
-    const cShipTo = col("ship-to name1", "ship to name", "ship-to name");
-    const cDoc = col("sales document", "document number");
-    const cPo = col("po", "purchase order number");
-    const cShipCond = col("shipping conditions", "shipping condition");
-    const cWeight = col("gross weight");
-    const cFp = col("floor position", "order header fp", "fp");
-    const cStatus = col("status", "description");
+    // Resolve the Sold-to FIRST and block it, so the Ship-to lookup can never
+    // land on it. This is what used to let a Sold-to name be stored as a contact.
+    const cSoldTo = col(["sold-to name1", "sold to name", "sold-to name", "sold-to", "sold to"]);
+    const soldToBlocked: number[] = cSoldTo >= 0 ? [cSoldTo] : [];
+
+    const cDb = col(["db", "delivery block"]);
+    const cCreated = col(["created_on", "created on"]);
+    const cGi = col(["goods issue date", "gi"]);
+    const cRdd = col(["rdd", "requested delivery date"]);
+    const cPlant = col(["plant"]);
+    const cMix = col(["material mix"]);
+    const cShipTo = col(["ship-to name1", "ship to name", "ship-to name", "ship-to"], soldToBlocked);
+    const cDoc = col(["sales document", "document number"]);
+    const cPo = col(["po", "purchase order number"]);
+    const cShipCond = col(["shipping conditions", "shipping condition"]);
+    const cWeight = col(["gross weight"]);
+    const cFp = col(["floor position", "order header fp", "fp"]);
+    const cStatus = col(["status", "description"]);
+
+    // Without a Ship-to column there is no contact identity — bail out rather
+    // than silently grouping everything under one bogus key.
+    if (cShipTo < 0) {
+        return [];
+    }
 
     // --- Parse consolidation blocks -------------------------------------------
     const blocks: ConsolidationBlock[] = [];
@@ -128,15 +163,58 @@ function main(
     }
 
     // --- Contact lookup --------------------------------------------------------
+    // Keyed on the normalised Ship-to name. Rows with a blank email are skipped
+    // and the first non-blank email wins, so a duplicate or half-filled row can
+    // never wipe out a Ship-to that already has a contact.
     const contacts: Contact[] = contactsJson ? JSON.parse(contactsJson) : [];
     const contactMap: { [key: string]: string } = {};
     for (const c of contacts) {
-        if (c && c.name) {
-            contactMap[normName(c.name)] = String(c.email || "").trim();
+        if (!c || !c.name) continue;
+        const email = String(c.email || "").trim();
+        if (email === "") continue;
+        const key = normName(c.name);
+        if (contactMap[key] === undefined) {
+            contactMap[key] = email;
         }
     }
 
-    // --- Group blocks by resolved recipient -----------------------------------
+    // --- Fold blocks into one entry per Ship-to --------------------------------
+    // The Ship-to is the only identity. Two spellings of the same Ship-to
+    // ("AWG - Great Lakes Div" / "AWG - GREAT LAKES DIV") collapse into a single
+    // entry that carries one canonical display name.
+    interface ShipToEntry {
+        key: string;
+        name: string;
+        email: string;
+        matched: boolean;
+        blocks: ConsolidationBlock[];
+    }
+    const entries: { [key: string]: ShipToEntry } = {};
+    const entryOrder: string[] = [];
+
+    for (const b of blocks) {
+        const key = normName(b.shipTo);
+        if (key === "") continue;
+        if (!entries[key]) {
+            const resolved = contactMap[key] || "";
+            entries[key] = {
+                key: key,
+                // Canonical display name: the first spelling seen for this Ship-to.
+                name: String(b.shipTo).replace(/\s+/g, " ").trim(),
+                email: resolved,
+                matched: resolved !== "",
+                blocks: [],
+            };
+            entryOrder.push(key);
+        }
+        entries[key].blocks.push(b);
+    }
+
+    // --- Group into drafts -----------------------------------------------------
+    // Matched Ship-tos that share a recipient are folded into one email, so a
+    // person still receives a single message. Unmatched Ship-tos are NEVER
+    // folded: one draft per Ship-to keeps the Pending row (and therefore the
+    // Contacts Data Base) keyed on exactly one clean Ship-to name.
     interface Group {
         email: string;
         matched: boolean;
@@ -144,27 +222,28 @@ function main(
         blocks: ConsolidationBlock[];
     }
     const groups: { [key: string]: Group } = {};
+    const groupOrder: string[] = [];
 
-    for (const b of blocks) {
-        const resolved = contactMap[normName(b.shipTo)] || "";
-        const matched = resolved !== "";
-        // Unmatched Ship-tos are routed to the shared mailbox (with a note) so a
-        // human can add the contact and forward — nothing is lost.
-        const email = matched ? resolved : SHARED_MAILBOX;
-        const key = matched ? email.toLowerCase() : "__unmatched__" + normName(b.shipTo);
-        if (!groups[key]) {
-            groups[key] = { email: email, matched: matched, names: [], blocks: [] };
+    for (const k of entryOrder) {
+        const e = entries[k];
+        const groupKey = e.matched ? "m:" + e.email.toLowerCase() : "u:" + e.key;
+        const to = e.matched ? e.email : SHARED_MAILBOX;
+        if (!groups[groupKey]) {
+            groups[groupKey] = { email: to, matched: e.matched, names: [], blocks: [] };
+            groupOrder.push(groupKey);
         }
-        if (groups[key].names.indexOf(b.shipTo) < 0) {
-            groups[key].names.push(b.shipTo);
+        if (groups[groupKey].names.indexOf(e.name) < 0) {
+            groups[groupKey].names.push(e.name);
         }
-        groups[key].blocks.push(b);
+        for (const b of e.blocks) {
+            groups[groupKey].blocks.push(b);
+        }
     }
 
     // --- Build one draft payload per group ------------------------------------
     const drafts: DraftEmail[] = [];
-    for (const key of Object.keys(groups)) {
-        const g = groups[key];
+    for (const groupKey of groupOrder) {
+        const g = groups[groupKey];
         // For unmatched Ship-tos, add a "please add contact" note at the very top.
         let body = "";
         if (!g.matched) {
@@ -181,6 +260,8 @@ function main(
             to: g.email,
             cc: CC_LIST,
             subject: "SHIP WITH NEEDED - " + g.names.join("/"),
+            shipTo: g.names.join("/"),
+            shipTos: g.names,
             htmlBody: "<html><body>" + body + "</body></html>",
             matched: g.matched,
         });

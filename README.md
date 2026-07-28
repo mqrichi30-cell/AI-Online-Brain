@@ -10,7 +10,11 @@ contacto del Ship-to.
 
 | Ruta | Qué es |
 |---|---|
-| `flows/awg-shipwith-pos-report/definition.original.json` | `AWG - Ship with POs Repot` — procesa el adjunto y arma los borradores |
-| `flows/awg-shipwith-add-contact-send/definition.original.json` | `AWG ShipWith - Add Contact & Send` — resuelve los Pending y manda el correo |
-| `flows/awg-shipwith-add-contact-send/definition.patched.json` | El mismo flow con el guard anti-duplicados en la Contacts Data Base |
-| `docs/awg-shipwith-soldto-contact-bug.md` | Diagnóstico del bug de Sold To × Ship To y pasos de corrección |
+| `office-scripts/shipWithReport.ts` | El Office Script que arma los borradores y resuelve el contacto |
+| `office-scripts/tests/run.sh` | Tests del matching de contactos (`node` + `tsc`) |
+| `flows/awg-shipwith-pos-report/` | `AWG - Ship with POs Repot` — procesa el adjunto y arma los borradores |
+| `flows/awg-shipwith-add-contact-send/` | `AWG ShipWith - Add Contact & Send` — resuelve los Pending y manda el correo |
+| `docs/awg-shipwith-soldto-contact-bug.md` | Diagnóstico del contacto que se volvía a pedir cada semana, y cómo desplegar |
+
+Cada carpeta de flow tiene el `definition.original.json` exportado de Power
+Automate y el `definition.patched.json` con las correcciones.

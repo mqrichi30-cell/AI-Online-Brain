@@ -2,21 +2,11 @@
 
 ## Síntoma
 
-En la *Regional Team – Contacts Data Base* aparecen filas que son el **producto
-cartesiano de Sold To × Ship To**:
+En la *Regional Team – Contacts Data Base* se acumulan filas que parecen
+combinaciones de Sold To × Ship To, y aun así el flow sigue pidiendo el contacto
+**del mismo Ship-to todas las semanas**.
 
-| Sold to | Ship to Name | … | Email to |
-|---|---|---|---|
-| AWG - OKLAHOMA CITY | AWG - OKLAHOMA CITY | | mike.bourdelais@awginc.com |
-| AWG - GREAT LAKES DIV | AWG - OKLAHOMA CITY | | dave.scanlan@awginc.com |
-| AWG - SPRINGFIELD | AWG - OKLAHOMA CITY | | mike.bourdelais@awginc.com |
-| AWG - OKLAHOMA CITY | AWG - GREAT LAKES DIV | | mike.bourdelais@awginc.com |
-| … (9 combinaciones para 3 ship-to) | | | |
-
-y aun así el flow sigue pidiendo el contacto **del mismo Ship-to todas las
-semanas**.
-
-## Cómo está armada la cadena hoy
+## Cómo está armada la cadena
 
 ```
 [AWG - Ship with POs Repot]  (trigger: correo con adjunto .xlsx)
@@ -24,12 +14,9 @@ semanas**.
   List_contacts                -> Contacts Data Base (tabla 328EDC8D-…)
   Select_contacts              -> [{ name: <Ship to Name>, email: <Email to> }]
   Run_script_build_drafts      -> Office Script `shipWithReport`
-                                  in : contactsJson, signatureHtml
-                                  out: [{ to, cc, subject, htmlBody, matched }]
   For_each_draft
     Send_message
     If matched == false  -> Create_pending_item
-                            Title = subject − "SHIP WITH NEEDED - "
 
 [AWG ShipWith - Add Contact & Send]  (recurrence: 1 h)
   Get_pending_items   Status eq 'Pending' and ContactEmail ne null
@@ -37,106 +24,144 @@ semanas**.
   … agrupa por email, manda el correo, marca Status = Sent
 ```
 
-## Dónde está el problema
+## Causa raíz
 
-Dos hallazgos, verificados sobre los `definition.json` exportados:
+El Sold To **no** viaja desde la Contacts Data Base: `Select_contacts` mapea solo
+`Ship to Name` y `Email to`, y `Add_contact_row` escribe solo esas dos columnas.
+El problema estaba en el Office Script, y son **dos defectos independientes**,
+ambos reproducidos con `office-scripts/tests/run.sh` contra el script original:
 
-### 1. El Sold To **no** viene de la Contacts Data Base
-
-`Select_contacts` (flow del reporte) mapea únicamente:
-
-```json
-{ "name": "@item()?['Ship to Name']", "email": "@item()?['Email to']" }
-```
-
-La columna *Sold to* nunca se le pasa al script. Y `Add_contact_row` (flow de
-contactos) escribe únicamente `item/Ship to Name` y `item/Email to` — tampoco
-toca la columna *Sold to*.
-
-**Conclusión: el Sold To entra por el lado del reporte, dentro del Office Script
-`shipWithReport`.** El script está construyendo su clave de agrupación / de
-match combinando Sold To + Ship To en lugar de usar solo el Ship To. Eso explica
-las dos mitades del síntoma:
-
-- **Las combinaciones**: cada par (Sold To, Ship To) se trata como un
-  destinatario distinto, así que 3 sold-to × 3 ship-to generan 9 grupos.
-- **La repetición semanal**: cuando un Ship-to que ya tiene contacto aparece bajo
-  un Sold To distinto, la clave combinada no coincide con ningún `name` de
-  `contactsJson`, el script devuelve `matched = false`, y el flow vuelve a crear
-  un item Pending pidiendo el contacto otra vez.
-
-El `Title` que se guarda como *Ship to Name* sale de
-`replace(subject, 'SHIP WITH NEEDED - ', '')`, es decir del `subject` que arma el
-script. Si ese subject lleva la clave combinada, lo que queda escrito en la
-Contacts DB tampoco es un Ship-to limpio, y nunca vuelve a hacer match.
-
-### 2. El append a la Contacts DB no está protegido contra duplicados
-
-`Add_all_contacts` llama a `AddRowV2` **incondicionalmente** para cada item
-Pending. No consulta la tabla antes de escribir. Aunque se corrija la clave del
-script, cualquier re-proceso (un reporte reenviado, un Pending resuelto dos
-veces) sigue agregando filas repetidas.
-
-## Correcciones
-
-### A. Office Script `shipWithReport` — la causa raíz
-
-El script debe:
-
-1. Agrupar los POs y resolver el contacto **solo por Ship To**. El Sold To puede
-   seguir mostrándose en el cuerpo del correo, pero no debe formar parte de la
-   clave.
-2. Normalizar ambos lados de la comparación antes de hacer match — `trim()` +
-   `toUpperCase()` — para que "AWG - Great Lakes Div " y
-   "AWG - GREAT LAKES DIV" cuenten como el mismo Ship-to.
-3. Poner en `subject` el Ship-to limpio, porque ese texto es el que termina
-   guardado como *Ship to Name* en la Contacts DB.
-
-En pseudocódigo, el cambio es pasar de:
+### 1. Una fila duplicada con el email vacío borra un contacto bueno
 
 ```ts
-const key = `${soldTo} - ${shipTo}`;              // ❌ genera el cartesiano
-const hit = contacts.find(c => c.name === key);
+for (const c of contacts) {
+    if (c && c.name) {
+        contactMap[normName(c.name)] = String(c.email || "").trim();   // ❌
+    }
+}
 ```
 
-a:
+La asignación es incondicional y **la última fila gana**. Como la tabla tiene
+varias filas por Ship-to, basta con que una de ellas tenga el nombre lleno y el
+email vacío para que `contactMap["AWG - GREAT LAKES DIV"]` quede en `""` →
+`matched = false` → el flow crea otro Pending → **te vuelve a pedir el contacto
+de un Ship-to que ya lo tenía**.
+
+Contra el script original (test T1):
+
+```
+T1  duplicate contact row with a BLANK email must not erase a good contact
+  FAIL matched              expected true   actual false
+  FAIL to                   expected "dave.scanlan@awginc.com"
+                            actual   "pgcustservw2.im@pg.com"
+  FAIL pending rows created expected []     actual ["AWG - GREAT LAKES DIV"]
+```
+
+Y con filas duplicadas que sí tienen email, "la última gana" también elige un
+destinatario **arbitrario**: en el screenshot `AWG - GREAT LAKES DIV` aparece con
+`dave.scanlan@` y con `mike.bourdelais@`, y el que quede de último es el que se
+usa.
+
+### 2. Un Ship-to escrito de dos formas produce un Title combinado
 
 ```ts
-const norm = (s: string) => (s ?? "").trim().toUpperCase();
-const key  = norm(shipTo);                        // ✅ solo Ship-to
-const hit  = contacts.find(c => norm(c.name) === key);
+const key = matched ? email.toLowerCase() : "__unmatched__" + normName(b.shipTo);
+…
+if (groups[key].names.indexOf(b.shipTo) < 0) groups[key].names.push(b.shipTo);  // ❌ raw
+…
+subject: "SHIP WITH NEEDED - " + g.names.join("/"),
 ```
 
-Este cambio **no está aplicado** en este repo: el script no viene en los
-paquetes exportados (`Microsoft.Flow/flows/*/definition.json` solo referencia el
-`scriptId` `01DYYVZGSTVFZKV6GUKFBLVFEWLC75I3O2`). Hay que exportarlo desde
-Excel → Automate → `shipWithReport` para poder corregirlo con precisión.
+La clave del grupo está **normalizada** pero en `names` se guarda el texto
+**crudo**. Si el reporte trae `AWG - Great Lakes Div` y `AWG - GREAT LAKES DIV`,
+las dos caen en el mismo grupo y el subject queda:
 
-### B. Flow `AWG ShipWith - Add Contact & Send` — aplicado
+```
+SHIP WITH NEEDED - AWG - Great Lakes Div/AWG - GREAT LAKES DIV
+```
 
-`flows/awg-shipwith-add-contact-send/definition.patched.json` agrega:
+El flow del reporte hacía `item/Title = replace(subject, 'SHIP WITH NEEDED - ', '')`,
+así que ese string **combinado** se guardaba tal cual como un único
+`Ship to Name`. Esa fila no puede coincidir nunca con un Ship-to real → el
+Ship-to queda pidiéndose para siempre, y la tabla acumula filas que parecen
+combinaciones.
+
+Contra el script original (test T2):
+
+```
+T2  two spellings of ONE unmatched Ship-to must yield ONE clean Pending row
+  FAIL pending rows created
+       expected ["AWG - Great Lakes Div"]
+       actual   ["AWG - Great Lakes Div/AWG - GREAT LAKES DIV"]
+```
+
+Lo mismo aplica a los grupos con `matched = true`, que se agrupan **por email**:
+varios Ship-tos con el mismo destinatario comparten un subject `A/B`. Ese caso no
+llegaba a la Contacts DB (no genera Pending), pero confirmaba que el subject no
+sirve como identificador.
+
+## Correcciones aplicadas
+
+### A. `office-scripts/shipWithReport.ts`
+
+1. **`contactMap` no destructivo** — se ignoran las filas con email vacío y gana
+   el primer email no vacío, así una fila duplicada o a medio llenar ya no puede
+   borrar un contacto existente.
+2. **Identidad = Ship-to normalizado** — los bloques se pliegan primero en una
+   entrada por Ship-to (`normName`), con un nombre canónico único. Los Ship-tos
+   *sin* contacto **nunca** se agrupan entre sí: uno por draft, garantizando un
+   solo Pending limpio por Ship-to. Los que *sí* tienen contacto se siguen
+   agrupando por email, para que cada persona reciba un solo correo.
+3. **Campo `shipTo` en el payload** — el draft ahora expone el Ship-to canónico
+   aparte del `subject`, para que el flow no tenga que recortar texto.
+4. **El Sold To no puede leerse como Ship-to** — `col()` resuelve primero la
+   columna Sold-to y la marca como bloqueada, de modo que el fallback por
+   coincidencia parcial de `cShipTo` no pueda caer en ella. Si no hay columna
+   Ship-to, el script devuelve `[]` en vez de agrupar todo bajo una clave falsa.
+
+> Nota de alcance: (1) y (2) son las causas confirmadas del síntoma. (4) es
+> endurecimiento — con los headers de ejemplo el script original también
+> resolvía bien la columna (test T3 pasa en ambas versiones); queda para que un
+> cambio de headers en el reporte no reintroduzca el problema.
+
+Comportamiento preservado: el HTML del correo, el subject, el CC, la
+consolidación por destinatario y el ruteo de los no encontrados al buzón
+compartido no cambian (tests T4 y T5).
+
+### B. `flows/awg-shipwith-pos-report/definition.patched.json`
+
+`Create_pending_item` ahora toma el nombre del campo dedicado:
+
+```diff
+- "item/Title": "@replace(items('For_each_draft')?['subject'], 'SHIP WITH NEEDED - ', '')"
++ "item/Title": "@items('For_each_draft')?['shipTo']"
+```
+
+### C. `flows/awg-shipwith-add-contact-send/definition.patched.json`
+
+`Add_all_contacts` llamaba a `AddRowV2` sin consultar la tabla, así que cualquier
+reproceso duplicaba filas. Se agregó:
 
 - **`List_existing_contacts`** — lee la Contacts Data Base (mismo file/table que
   usa el flow del reporte).
-- **`Select_existing_ship_tos`** — proyecta las claves ya existentes
-  normalizadas: `@toUpper(trim(coalesce(item()?['Ship to Name'], '')))`.
+- **`Select_existing_ship_tos`** — claves existentes normalizadas:
+  `@toUpper(trim(coalesce(item()?['Ship to Name'], '')))`.
 - **`If_ship_to_not_in_contacts`** — envuelve `Add_contact_row`; solo escribe si
   el Ship-to no está ya en la tabla.
-- `item/Ship to Name` ahora se guarda con `@trim(...)`, y la columna *Sold to*
-  se deja deliberadamente vacía para que el contacto quede identificado por el
-  Ship-to únicamente.
+- `item/Ship to Name` se guarda con `@trim(...)`, y la columna *Sold to* se deja
+  vacía a propósito.
 
-El resto del flow (agrupación por email, envío, `Status = Sent`) queda igual.
+## Limpieza de la Contacts Data Base
 
-### C. Limpieza de la Contacts Data Base
+Las filas ya generadas siguen envenenando el match aunque el código esté
+corregido: mientras exista una fila con nombre y email vacío, o un Title
+combinado, el Ship-to correspondiente se seguirá pidiendo. Hay que dejar **una
+fila por Ship-to**:
 
-Las filas ya generadas siguen envenenando el match aunque se corrija el script.
-Hay que dejar **una fila por Ship-to**:
-
-1. Quedarse con un solo registro por *Ship to Name* (el correo correcto para ese
-   destino).
-2. Vaciar la columna *Sold to* en las filas que sobreviven.
-3. Borrar las filas duplicadas del cartesiano.
+1. Borrar las filas cuyo `Ship to Name` contenga `/` (los Titles combinados).
+2. Borrar las filas con `Ship to Name` lleno y `Email to` vacío.
+3. Quedarse con un solo registro por `Ship to Name` y vaciar la columna
+   *Sold to* en el que sobrevive.
 
 En el ejemplo del screenshot, las 9 filas AWG colapsan a 3:
 
@@ -146,19 +171,36 @@ En el ejemplo del screenshot, las 9 filas AWG colapsan a 3:
 | *(vacío)* | AWG - GREAT LAKES DIV | dave.scanlan@awginc.com |
 | *(vacío)* | AWG - SPRINGFIELD | mike.bourdelais@awginc.com |
 
-> Ojo con `AWG - GREAT LAKES DIV`: aparece dos veces con destinatarios distintos
+> `AWG - GREAT LAKES DIV` aparece con dos destinatarios distintos
 > (`dave.scanlan@awginc.com` y `dave.scanlan@awginc.com; nam.le…`). Al colapsar
-> hay que decidir cuál de los dos es el bueno.
+> hay que decidir cuál es el bueno — el código ya no lo elige al azar, pero
+> tampoco puede adivinar.
 
-## Cómo importar el flow corregido
+## Cómo desplegar
 
-1. Power Automate → **My flows** → *AWG ShipWith - Add Contact & Send* → **Export
-   → Package (.zip)**, para tener respaldo.
-2. Reemplazar `Microsoft.Flow/flows/<id>/definition.json` dentro del .zip por
-   `flows/awg-shipwith-add-contact-send/definition.patched.json`.
-3. **Import** el paquete como *Update* sobre el flow existente.
-4. En el diseñador, volver a seleccionar Location / Document Library / File /
-   Table en **List existing contacts** — los `drive`/`file`/`table` importados
-   son IDs y el diseñador pide re-bindearlos.
-5. Correr el flow una vez con un Pending de prueba y confirmar que no se agrega
-   fila si el Ship-to ya existe.
+**Office Script** — Excel → Automate → `shipWithReport` → pegar
+`office-scripts/shipWithReport.ts` → Save. El script devuelve un campo nuevo
+(`shipTo`), así que **hay que desplegarlo junto con el flow del reporte**: si se
+actualiza solo el flow, `shipTo` llega vacío y los Pending se crean sin nombre.
+
+**Flows** — para cada uno: Export → Package (.zip) como respaldo, reemplazar
+`Microsoft.Flow/flows/<id>/definition.json` por el `definition.patched.json`
+correspondiente, e Import como *Update* sobre el flow existente. En el diseñador
+hay que volver a seleccionar Location / Document Library / File / Table en
+**List existing contacts** — los `drive`/`file`/`table` importados son IDs y el
+diseñador pide re-bindearlos.
+
+**Orden sugerido**: script → flow del reporte → flow de contactos → limpieza de
+la tabla → correr una semana en observación.
+
+## Tests
+
+```bash
+office-scripts/tests/run.sh                 # versión actual
+git show <rev>:office-scripts/shipWithReport.ts > /tmp/old.ts
+office-scripts/tests/run.sh /tmp/old.ts     # cualquier revisión anterior
+```
+
+Requiere `node` y `tsc`. El runner concatena el script con el harness (Office
+Scripts comparte un solo scope de archivo), compila y ejecuta, y además verifica
+que el script no dependa de `console`/DOM — cosas que Office Scripts no ofrece.
