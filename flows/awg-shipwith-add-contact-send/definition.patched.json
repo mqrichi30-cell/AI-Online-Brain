@@ -1,0 +1,362 @@
+{
+  "name": "812ffc17-85a8-4389-94fd-650d29860a42",
+  "id": "/providers/Microsoft.Flow/flows/812ffc17-85a8-4389-94fd-650d29860a42",
+  "type": "Microsoft.Flow/flows",
+  "properties": {
+    "apiId": "/providers/Microsoft.PowerApps/apis/shared_logicflows",
+    "displayName": "AWG ShipWith - Add Contact & Send",
+    "definition": {
+      "metadata": {
+        "workflowEntityId": null,
+        "processAdvisorMetadata": null,
+        "flowChargedByPaygo": null,
+        "flowclientsuspensionreason": "None",
+        "flowclientsuspensiontime": null,
+        "flowclientsuspensionreasondetails": null,
+        "creator": {
+          "id": "1c668200-eb84-4a2c-b156-b40c8a34eabe",
+          "type": "User",
+          "tenantId": "3596192b-fdf5-4e2c-a6fa-acb706c963d8"
+        },
+        "provisioningMethod": "FromDefinition",
+        "failureAlertSubscription": true,
+        "clientLastModifiedTime": "2026-07-22T15:41:28.8909602Z",
+        "connectionKeySavedTimeKey": "2026-07-15T17:00:41.1005821Z",
+        "creationSource": null,
+        "modifiedSources": "Portal",
+        "lastModifiedBy": "1c668200-eb84-4a2c-b156-b40c8a34eabe"
+      },
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        }
+      },
+      "triggers": {
+        "Recurrence": {
+          "recurrence": {
+            "frequency": "Hour",
+            "interval": 1
+          },
+          "evaluatedRecurrence": {
+            "frequency": "Hour",
+            "interval": 1
+          },
+          "type": "Recurrence"
+        }
+      },
+      "actions": {
+        "Get_pending_items": {
+          "runAfter": {},
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+              "table": "ab82e476-84e3-4e53-91c3-17acdbcfcbe4",
+              "$filter": "Status eq 'Pending' and ContactEmail ne null",
+              "$top": 100
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "connectionName": "shared_sharepointonline",
+              "operationId": "GetItems"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "List_existing_contacts": {
+          "runAfter": {
+            "Get_pending_items": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "016QGDYJF4ARGJL5QOEFGKXE3U6PPIZO3J": "/General/Customer Documents/Regional Team – Contacts Data Base.xlsx",
+            "tableId": "{328EDC8D-BED0-48A6-91A8-0D0E377326B1}"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "source": "groups/e8be79ff-3e86-4989-b938-5aa03efc90e9",
+              "drive": "b!QNoqtQQKEkKt1J9dUatHQLti2oNp2flGoIi9gsYRIe8ef7acQlFhR7H2v-R3yf8Z",
+              "file": "016QGDYJF4ARGJL5QOEFGKXE3U6PPIZO3J",
+              "table": "{328EDC8D-BED0-48A6-91A8-0D0E377326B1}",
+              "$top": 10000
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
+              "connectionName": "shared_excelonlinebusiness",
+              "operationId": "GetItems"
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "description": "Reads the Regional Team Contacts Data Base so we never append a Ship-to that already has a contact row."
+        },
+        "Select_existing_ship_tos": {
+          "runAfter": {
+            "List_existing_contacts": [
+              "Succeeded"
+            ]
+          },
+          "type": "Select",
+          "inputs": {
+            "from": "@body('List_existing_contacts')?['value']",
+            "select": "@toUpper(trim(coalesce(item()?['Ship to Name'], '')))"
+          },
+          "description": "Normalised (UPPER + trimmed) Ship-to keys already present in the Contacts Data Base."
+        },
+        "Add_all_contacts": {
+          "foreach": "@body('Get_pending_items')?['value']",
+          "actions": {
+            "If_ship_to_not_in_contacts": {
+              "type": "If",
+              "expression": "@not(contains(body('Select_existing_ship_tos'), toUpper(trim(items('Add_all_contacts')?['Title']))))",
+              "actions": {
+                "Add_contact_row": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "parameters": {
+                      "source": "groups/e8be79ff-3e86-4989-b938-5aa03efc90e9",
+                      "drive": "b!QNoqtQQKEkKt1J9dUatHQLti2oNp2flGoIi9gsYRIe8ef7acQlFhR7H2v-R3yf8Z",
+                      "file": "016QGDYJF4ARGJL5QOEFGKXE3U6PPIZO3J",
+                      "table": "{328EDC8D-BED0-48A6-91A8-0D0E377326B1}",
+                      "item/Ship to Name": "@trim(items('Add_all_contacts')?['Title'])",
+                      "item/Email to": "@items('Add_all_contacts')?['ContactEmail']"
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
+                      "connectionName": "shared_excelonlinebusiness",
+                      "operationId": "AddRowV2"
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  },
+                  "description": "Save Ship-to -> email in the Contacts Data Base. Only the 'Ship to Name' and 'Email to' columns are written; the 'Sold to' column is deliberately left empty so the contact is keyed on the Ship-to alone."
+                }
+              },
+              "else": {
+                "actions": {}
+              },
+              "description": "Skips the append when this Ship-to already has a row, so re-sends never duplicate the Contacts Data Base."
+            }
+          },
+          "runAfter": {
+            "Select_existing_ship_tos": [
+              "Succeeded"
+            ]
+          },
+          "type": "Foreach"
+        },
+        "Select_emails": {
+          "runAfter": {
+            "Add_all_contacts": [
+              "Succeeded"
+            ]
+          },
+          "type": "Select",
+          "inputs": {
+            "from": "@body('Get_pending_items')?['value']",
+            "select": "@toLower(trim(item()?['ContactEmail']))"
+          }
+        },
+        "Compose_distinct_emails": {
+          "runAfter": {
+            "Select_emails": [
+              "Succeeded"
+            ]
+          },
+          "type": "Compose",
+          "inputs": "@union(body('Select_emails'), body('Select_emails'))"
+        },
+        "For_each_email": {
+          "foreach": "@outputs('Compose_distinct_emails')",
+          "actions": {
+            "Filter_group": {
+              "type": "Query",
+              "inputs": {
+                "from": "@body('Get_pending_items')?['value']",
+                "where": "@equals(toLower(trim(item()?['ContactEmail'])), items('For_each_email'))"
+              }
+            },
+            "Select_titles": {
+              "runAfter": {
+                "Filter_group": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Select",
+              "inputs": {
+                "from": "@body('Filter_group')",
+                "select": "@item()?['Title']"
+              }
+            },
+            "Select_middles": {
+              "runAfter": {
+                "Filter_group": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Select",
+              "inputs": {
+                "from": "@body('Filter_group')",
+                "select": "@substring(item()?['HtmlBody'], indexOf(item()?['HtmlBody'], '<h3>Consolidation Number:'), sub(indexOf(item()?['HtmlBody'], '<br>Regards,'), indexOf(item()?['HtmlBody'], '<h3>Consolidation Number:')))"
+              }
+            },
+            "Compose_subject": {
+              "runAfter": {
+                "Select_titles": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@concat('SHIP WITH NEEDED - ', join(body('Select_titles'), '/'))"
+            },
+            "Compose_body": {
+              "runAfter": {
+                "Select_middles": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@concat('<html><body>', 'Dear Team,<br><br>The following PO is undersized and requires a Ship With to make a full truckload. Do you prefer to write a Ship With PO we can consolidate OR do you prefer we add or increase product already on the PO?<br><br>', join(body('Select_middles'), ''), '<br>Regards,<br>pgcustservw2.im@pg.com<br>NA Order Management | Regional<br>', '</body></html>')"
+            },
+            "Compose_message": {
+              "runAfter": {
+                "Compose_subject": [
+                  "Succeeded"
+                ],
+                "Compose_body": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": {
+                "subject": "@{outputs('Compose_subject')}",
+                "importance": "normal",
+                "body": {
+                  "contentType": "HTML",
+                  "content": "@{outputs('Compose_body')}"
+                },
+                "toRecipients": "@json(concat('[{\"emailAddress\":{\"address\":\"', replace(replace(replace(trim(items('For_each_email')), ' ', ''), ',', ';'), ';', '\"}},{\"emailAddress\":{\"address\":\"'), '\"}}]'))",
+                "ccRecipients": "@json('[{\"emailAddress\":{\"address\":\"marquardt.jw@pg.com\"}},{\"emailAddress\":{\"address\":\"jackson.vs@pg.com\"}}]')"
+              }
+            },
+            "Create_message": {
+              "runAfter": {
+                "Compose_message": [
+                  "Succeeded"
+                ]
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "Uri": "v1.0/me/messages",
+                  "Method": "POST",
+                  "Body": "@outputs('Compose_message')",
+                  "ContentType": "application/json"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "connectionName": "shared_office365",
+                  "operationId": "HttpRequest"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Send_message": {
+              "runAfter": {
+                "Create_message": [
+                  "Succeeded"
+                ]
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "Uri": "v1.0/me/messages/@{encodeUriComponent(body('Create_message')?['id'])}/send",
+                  "Method": "POST",
+                  "Body": "{}",
+                  "ContentType": "application/json"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "connectionName": "shared_office365",
+                  "operationId": "HttpRequest"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Mark_sent": {
+              "foreach": "@body('Filter_group')",
+              "actions": {
+                "Mark_item_sent": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "parameters": {
+                      "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+                      "table": "ab82e476-84e3-4e53-91c3-17acdbcfcbe4",
+                      "id": "@items('Mark_sent')?['ID']",
+                      "item/Title": "@items('Mark_sent')?['Title']",
+                      "item/Status/Value": "Sent"
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                      "connectionName": "shared_sharepointonline",
+                      "operationId": "PatchItem"
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  }
+                }
+              },
+              "runAfter": {
+                "Send_message": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Foreach"
+            }
+          },
+          "runAfter": {
+            "Compose_distinct_emails": [
+              "Succeeded"
+            ]
+          },
+          "type": "Foreach"
+        }
+      },
+      "outputs": {}
+    },
+    "connectionReferences": {
+      "shared_sharepointonline": {
+        "connectionName": "17baae33a6364de586fadca1146f77c6",
+        "source": "Embedded",
+        "id": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+        "tier": "NotSpecified",
+        "apiName": "sharepointonline",
+        "isProcessSimpleApiReferenceConversionAlreadyDone": false
+      },
+      "shared_excelonlinebusiness": {
+        "connectionName": "shared-excelonlinebu-03886d99-1d8e-4b5b-95ce-105a8b6ca4eb",
+        "source": "Embedded",
+        "id": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
+        "tier": "NotSpecified",
+        "apiName": "excelonlinebusiness",
+        "isProcessSimpleApiReferenceConversionAlreadyDone": false
+      },
+      "shared_office365": {
+        "connectionName": "shared-office365-89c9854a-cfbd-48e5-acd3-cb019798a1ee",
+        "source": "Embedded",
+        "id": "/providers/Microsoft.PowerApps/apis/shared_office365",
+        "tier": "NotSpecified",
+        "apiName": "office365",
+        "isProcessSimpleApiReferenceConversionAlreadyDone": false
+      }
+    },
+    "flowFailureAlertSubscribed": false,
+    "isManaged": false
+  }
+}

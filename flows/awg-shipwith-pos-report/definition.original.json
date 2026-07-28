@@ -1,0 +1,395 @@
+{
+  "name": "8196de22-3232-4dec-95d3-3b1d1acf4ebd",
+  "id": "/providers/Microsoft.Flow/flows/8196de22-3232-4dec-95d3-3b1d1acf4ebd",
+  "type": "Microsoft.Flow/flows",
+  "properties": {
+    "apiId": "/providers/Microsoft.PowerApps/apis/shared_logicflows",
+    "displayName": "AWG - Ship with POs Repot",
+    "definition": {
+      "metadata": {
+        "workflowEntityId": null,
+        "processAdvisorMetadata": null,
+        "flowChargedByPaygo": null,
+        "flowclientsuspensionreason": "None",
+        "flowclientsuspensiontime": null,
+        "flowclientsuspensionreasondetails": null,
+        "creator": {
+          "id": "1c668200-eb84-4a2c-b156-b40c8a34eabe",
+          "type": "User",
+          "tenantId": "3596192b-fdf5-4e2c-a6fa-acb706c963d8"
+        },
+        "provisioningMethod": "FromDefinition",
+        "failureAlertSubscription": true,
+        "clientLastModifiedTime": "2026-07-15T15:56:00.3327371Z",
+        "connectionKeySavedTimeKey": "2026-07-15T15:56:00.3327371Z",
+        "creationSource": "Portal",
+        "modifiedSources": "Portal"
+      },
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        }
+      },
+      "triggers": {
+        "When_a_new_email_arrives_(V3)": {
+          "splitOn": "@triggerOutputs()?['body/value']",
+          "metadata": {
+            "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAYFina4AAA=": "Marín, Cristhofer - AWG + Wakefern"
+          },
+          "type": "OpenApiConnectionNotification",
+          "inputs": {
+            "parameters": {
+              "includeAttachments": true,
+              "subjectFilter": "AWG - Ship with POs Repot",
+              "fetchOnlyWithAttachment": true,
+              "folderPath": "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAYFina4AAA="
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+              "connectionName": "shared_office365",
+              "operationId": "OnNewEmailV3"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        }
+      },
+      "actions": {
+        "Initialize_SignatureHtml": {
+          "runAfter": {},
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "SignatureHtml",
+                "type": "string",
+                "value": "<br>Regards,<br>pgcustservw2.im@pg.com<br>NA Order Management | Regional<br>"
+              }
+            ]
+          }
+        },
+        "Initialize_Placeholder": {
+          "runAfter": {
+            "Initialize_SignatureHtml": [
+              "Succeeded"
+            ]
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Placeholder",
+                "type": "string",
+                "value": ""
+              }
+            ]
+          },
+          "description": "Empty value used so Excel file/table/script fields import without validation. Re-pick the real file/table/script in the designer."
+        },
+        "Filter_xlsx_attachments": {
+          "runAfter": {
+            "Initialize_Placeholder": [
+              "Succeeded"
+            ]
+          },
+          "type": "Query",
+          "inputs": {
+            "from": "@triggerOutputs()?['body/attachments']",
+            "where": "@endsWith(toLower(item()?['name']), '.xlsx')"
+          }
+        },
+        "Create_temp_report_file": {
+          "runAfter": {
+            "Filter_xlsx_attachments": [
+              "Succeeded"
+            ]
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+              "folderPath": "/Shared Documents/General/Customer Documents/AWG-VMC",
+              "name": "ShipWith_Temp.xlsx",
+              "body": "@base64ToBinary(first(body('Filter_xlsx_attachments'))?['contentBytes'])"
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "connectionName": "shared_sharepointonline",
+              "operationId": "CreateFile"
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "description": "Writes this run's report attachment to a FIXED SharePoint file. Run script points at this same file each run (bind it in the designer)."
+        },
+        "List_contacts": {
+          "runAfter": {
+            "Create_temp_report_file": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "016QGDYJF4ARGJL5QOEFGKXE3U6PPIZO3J": "/General/Customer Documents/Regional Team – Contacts Data Base.xlsx",
+            "tableId": "{328EDC8D-BED0-48A6-91A8-0D0E377326B1}"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "source": "groups/e8be79ff-3e86-4989-b938-5aa03efc90e9",
+              "drive": "b!QNoqtQQKEkKt1J9dUatHQLti2oNp2flGoIi9gsYRIe8ef7acQlFhR7H2v-R3yf8Z",
+              "file": "016QGDYJF4ARGJL5QOEFGKXE3U6PPIZO3J",
+              "table": "{328EDC8D-BED0-48A6-91A8-0D0E377326B1}",
+              "$top": 10000
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
+              "connectionName": "shared_excelonlinebusiness",
+              "operationId": "GetItems"
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "description": "List rows present in a table -> the Regional Team Contacts Data Base. In the designer, re-pick Location / Document Library / File / Table (this replaces the placeholder expressions)."
+        },
+        "Select_contacts": {
+          "runAfter": {
+            "List_contacts": [
+              "Succeeded"
+            ]
+          },
+          "type": "Select",
+          "inputs": {
+            "from": "@body('List_contacts')?['value']",
+            "select": {
+              "name": "@item()?['Ship to Name']",
+              "email": "@item()?['Email to']"
+            }
+          },
+          "description": "Map contact rows to { name, email }. Adjust the column names to match the Contacts Data Base headers."
+        },
+        "Compose_contactsJson": {
+          "runAfter": {
+            "Select_contacts": [
+              "Succeeded"
+            ]
+          },
+          "type": "Compose",
+          "inputs": "@string(body('Select_contacts'))"
+        },
+        "Run_script_build_drafts": {
+          "runAfter": {
+            "Compose_contactsJson": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "016QGDYJCVGVBXG3A34ZFYULZA22UTUVY6": "/General/Customer Documents/AWG-VMC/ShipWith Report.xlsm",
+            "016QGDYJEOIMB3WWLHVJGJRDY674DI5LJK": "/General/Customer Documents/AWG-VMC/ShipWith_Temp.xlsx",
+            "tableId": null
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "source": "groups/e8be79ff-3e86-4989-b938-5aa03efc90e9",
+              "drive": "b!QNoqtQQKEkKt1J9dUatHQLti2oNp2flGoIi9gsYRIe8ef7acQlFhR7H2v-R3yf8Z",
+              "file": "016QGDYJEOIMB3WWLHVJGJRDY674DI5LJK",
+              "scriptId": "ms-officescript%3A%2F%2Fonedrive_business_itemlink%2F01DYYVZGSTVFZKV6GUKFBLVFEWLC75I3O2",
+              "ScriptParameters/contactsJson": "@outputs('Compose_contactsJson')",
+              "ScriptParameters/signatureHtml": "@variables('SignatureHtml')"
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
+              "connectionName": "shared_excelonlinebusiness",
+              "operationId": "RunScriptProd"
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "description": "Runs Office Script shipWithReport on the temp report. In the designer, re-pick Location / File = ShipWith_Temp.xlsx and Script = shipWithReport. Returns [{ to, cc, subject, htmlBody, matched }]."
+        },
+        "For_each_draft": {
+          "foreach": "@body('Run_script_build_drafts')?['result']",
+          "actions": {
+            "Compose_message": {
+              "type": "Compose",
+              "inputs": {
+                "subject": "@{items('For_each_draft')?['subject']}",
+                "importance": "normal",
+                "body": {
+                  "contentType": "HTML",
+                  "content": "@{items('For_each_draft')?['htmlBody']}"
+                },
+                "toRecipients": "@if(empty(items('For_each_draft')?['to']), json('[]'), json(concat('[{\"emailAddress\":{\"address\":\"', replace(replace(replace(trim(items('For_each_draft')?['to']), ' ', ''), ',', ';'), ';', '\"}},{\"emailAddress\":{\"address\":\"'), '\"}}]')))",
+                "ccRecipients": "@json('[{\"emailAddress\":{\"address\":\"marquardt.jw@pg.com\"}},{\"emailAddress\":{\"address\":\"jackson.vs@pg.com\"}}]')"
+              }
+            },
+            "Create_message": {
+              "runAfter": {
+                "Compose_message": [
+                  "Succeeded"
+                ]
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "Uri": "v1.0/me/messages",
+                  "Method": "POST",
+                  "Body": "@outputs('Compose_message')",
+                  "ContentType": "application/json"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "connectionName": "shared_office365",
+                  "operationId": "HttpRequest"
+                },
+                "authentication": "@parameters('$authentication')"
+              },
+              "description": "Creates the message as a draft in the pgcustservw2 mailbox."
+            },
+            "Send_message": {
+              "runAfter": {
+                "Create_message": [
+                  "Succeeded"
+                ]
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "Uri": "v1.0/me/messages/@{encodeUriComponent(body('Create_message')?['id'])}/send",
+                  "Method": "POST",
+                  "Body": "{}",
+                  "ContentType": "application/json"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "connectionName": "shared_office365",
+                  "operationId": "HttpRequest"
+                },
+                "authentication": "@parameters('$authentication')"
+              },
+              "description": "Sends the just-created message (auto-send). Saved to Sent Items."
+            },
+            "Create_pending_item_if_no_contact": {
+              "actions": {
+                "Create_pending_item": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "parameters": {
+                      "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+                      "table": "ab82e476-84e3-4e53-91c3-17acdbcfcbe4",
+                      "item/Title": "@replace(items('For_each_draft')?['subject'], 'SHIP WITH NEEDED - ', '')",
+                      "item/Subject": "@items('For_each_draft')?['subject']",
+                      "item/HtmlBody": "@items('For_each_draft')?['htmlBody']",
+                      "item/Status/Value": "Pending"
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                      "connectionName": "shared_sharepointonline",
+                      "operationId": "PostItem"
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  },
+                  "description": "Creates a Pending row in the AWG ShipWith Pending list (re-pick the List in the designer)."
+                }
+              },
+              "runAfter": {
+                "Send_message": [
+                  "Succeeded"
+                ]
+              },
+              "else": {
+                "actions": {}
+              },
+              "expression": "@equals(items('For_each_draft')?['matched'], false)",
+              "type": "If"
+            }
+          },
+          "runAfter": {
+            "Run_script_build_drafts": [
+              "Succeeded"
+            ]
+          },
+          "type": "Foreach"
+        },
+        "Set_category_RPA": {
+          "runAfter": {
+            "For_each_draft": [
+              "Succeeded"
+            ]
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "Uri": "v1.0/me/messages/@{encodeUriComponent(triggerOutputs()?['body/id'])}",
+              "Method": "PATCH",
+              "Body": "{\"categories\":[\"RPA\"]}",
+              "ContentType": "application/json"
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+              "connectionName": "shared_office365",
+              "operationId": "HttpRequest"
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "description": "Tags the original incoming email with the 'RPA' category."
+        },
+        "Move_to_AWG_Complete": {
+          "runAfter": {
+            "Set_category_RPA": [
+              "Succeeded"
+            ]
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "Uri": "v1.0/me/messages/@{encodeUriComponent(triggerOutputs()?['body/id'])}/move",
+              "Method": "POST",
+              "Body": "{\"destinationId\":\"AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAAiDm4CAAA=\"}",
+              "ContentType": "application/json"
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+              "connectionName": "shared_office365",
+              "operationId": "HttpRequest"
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "description": "Moves the original incoming email to the AWG Complete folder."
+        }
+      },
+      "outputs": {}
+    },
+    "connectionReferences": {
+      "shared_office365": {
+        "connectionName": "shared-office365-89c9854a-cfbd-48e5-acd3-cb019798a1ee",
+        "source": "Embedded",
+        "id": "/providers/Microsoft.PowerApps/apis/shared_office365",
+        "tier": "NotSpecified",
+        "apiName": "office365",
+        "isProcessSimpleApiReferenceConversionAlreadyDone": false
+      },
+      "shared_sharepointonline": {
+        "connectionName": "17baae33a6364de586fadca1146f77c6",
+        "source": "Embedded",
+        "id": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+        "tier": "NotSpecified",
+        "apiName": "sharepointonline",
+        "isProcessSimpleApiReferenceConversionAlreadyDone": false
+      },
+      "shared_excelonlinebusiness": {
+        "connectionName": "shared-excelonlinebu-03886d99-1d8e-4b5b-95ce-105a8b6ca4eb",
+        "source": "Embedded",
+        "id": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
+        "tier": "NotSpecified",
+        "apiName": "excelonlinebusiness",
+        "isProcessSimpleApiReferenceConversionAlreadyDone": false
+      }
+    },
+    "flowFailureAlertSubscribed": false,
+    "isManaged": false
+  }
+}
