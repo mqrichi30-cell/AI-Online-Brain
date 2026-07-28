@@ -37,7 +37,7 @@
         "When_a_new_email_arrives_(V3)": {
           "splitOn": "@triggerOutputs()?['body/value']",
           "metadata": {
-            "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAYFina4AAA=": "Marín, Cristhofer - AWG + Wakefern"
+            "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAYFina4AAA=": "Mar\u00edn, Cristhofer - AWG + Wakefern"
           },
           "type": "OpenApiConnectionNotification",
           "inputs": {
@@ -138,7 +138,7 @@
                                 "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Original_Immutable_ID'))}",
                                 "Method": "PATCH",
                                 "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
-                                "Body": "{\"isRead\":true,\"categories\":[\"RPA\",\"Cristhofer Marín\"]}",
+                                "Body": "{\"isRead\":true,\"categories\":[\"RPA\",\"Cristhofer Mar\u00edn\"]}",
                                 "ContentType": "application/json"
                               },
                               "host": {
