@@ -153,7 +153,12 @@
             },
             "authentication": "@parameters('$authentication')"
           },
-          "description": "List rows present in a table -> the Regional Team Contacts Data Base. In the designer, re-pick Location / Document Library / File / Table (this replaces the placeholder expressions)."
+          "description": "List rows present in a table -> the Regional Team Contacts Data Base. In the designer, re-pick Location / Document Library / File / Table (this replaces the placeholder expressions). Pagination MUST stay on: the Excel connector returns only 256 rows per page and the table holds ~946, so without it every Ship-to past row 256 is invisible.",
+          "runtimeConfiguration": {
+            "paginationPolicy": {
+              "minimumItemCount": 5000
+            }
+          }
         },
         "Select_contacts": {
           "runAfter": {

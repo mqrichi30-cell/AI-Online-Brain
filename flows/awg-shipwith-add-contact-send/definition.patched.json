@@ -96,7 +96,12 @@
             },
             "authentication": "@parameters('$authentication')"
           },
-          "description": "Reads the Regional Team Contacts Data Base so we never append a Ship-to that already has a contact row."
+          "description": "Reads the Regional Team Contacts Data Base so we never append a Ship-to that already has a contact row. Pagination MUST stay on: the Excel connector returns only 256 rows per page and the table holds ~946, so without it every Ship-to past row 256 is invisible.",
+          "runtimeConfiguration": {
+            "paginationPolicy": {
+              "minimumItemCount": 5000
+            }
+          }
         },
         "Select_existing_ship_tos": {
           "runAfter": {

@@ -24,12 +24,16 @@ combinaciones de Sold To × Ship To, y aun así el flow sigue pidiendo el contac
   … agrupa por email, manda el correo, marca Status = Sent
 ```
 
-## Causa raíz
+## Defectos secundarios del Office Script
+
+> La causa raíz del síntoma **no** está aquí: es la truncación a 256 filas del
+> conector Excel, documentada más abajo. Los dos defectos de esta sección son
+> reales y están corregidos, pero por sí solos no producían el pedido semanal.
 
 El Sold To **no** viaja desde la Contacts Data Base: `Select_contacts` mapea solo
 `Ship to Name` y `Email to`, y `Add_contact_row` escribe solo esas dos columnas.
-El problema estaba en el Office Script, y son **dos defectos independientes**,
-ambos reproducidos con `office-scripts/tests/run.sh` contra el script original:
+Los dos defectos que sí tenía el script, ambos reproducidos con
+`office-scripts/tests/run.sh` contra la versión original:
 
 ### 1. Una fila duplicada con el email vacío borra un contacto bueno
 
@@ -119,10 +123,11 @@ sirve como identificador.
    coincidencia parcial de `cShipTo` no pueda caer en ella. Si no hay columna
    Ship-to, el script devuelve `[]` en vez de agrupar todo bajo una clave falsa.
 
-> Nota de alcance: (1) y (2) son las causas confirmadas del síntoma. (4) es
-> endurecimiento — con los headers de ejemplo el script original también
-> resolvía bien la columna (test T3 pasa en ambas versiones); queda para que un
-> cambio de headers en el reporte no reintroduzca el problema.
+> Nota de alcance: ninguno de estos cuatro puntos era la causa del pedido
+> semanal — eso era la truncación a 256 filas. (1) y (2) son defectos reales que
+> habrían mordido más adelante; (4) es endurecimiento, ya que con los headers de
+> ejemplo el script original también resolvía bien la columna (test T3 pasa en
+> ambas versiones).
 
 Comportamiento preservado: el HTML del correo, el subject, el CC, la
 consolidación por destinatario y el ruteo de los no encontrados al buzón
@@ -200,6 +205,11 @@ Activar la paginación en las **dos** acciones que leen la tabla:
 
 En cada una: **Settings → Pagination → On**, con Threshold ≥ 5000. `$top` puede
 quedarse como está.
+
+**Estado: aplicado el 2026-07-28.** Ambas acciones quedaron con
+`runtimeConfiguration.paginationPolicy.minimumItemCount = 5000`, verificado en el
+Code view tras recargar el diseñador. Los `definition.patched.json` de este repo
+ya lo reflejan.
 
 Sin esto, ningún cambio en el Office Script sirve: el script no puede emparejar
 contra filas que nunca recibe.
