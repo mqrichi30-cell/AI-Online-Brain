@@ -1,0 +1,1193 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_office365": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "awg_sharedoffice365_37d40"
+        },
+        "api": {
+          "name": "shared_office365"
+        }
+      },
+      "shared_sharepointonline": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "awg_sharedsharepointonline_6e67f"
+        },
+        "api": {
+          "name": "shared_sharepointonline"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        }
+      },
+      "triggers": {
+        "When_a_new_email_arrives_(V3)": {
+          "splitOn": "@triggerOutputs()?['body/value']",
+          "metadata": {
+            "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAYFina4AAA=": "Marín, Cristhofer - AWG + Wakefern"
+          },
+          "type": "OpenApiConnectionNotification",
+          "inputs": {
+            "parameters": {
+              "folderPath": "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAYFina4AAA="
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+              "connectionName": "shared_office365",
+              "operationId": "OnNewEmailV3"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        }
+      },
+      "actions": {
+        "Compose_SenderEmail": {
+          "runAfter": {},
+          "type": "Compose",
+          "inputs": "@toLower(coalesce(triggerOutputs()?['body/from'], ''))"
+        },
+        "AWG_-_CON_-_01_Guard_OSSGenAI_Response": {
+          "actions": {
+            "Compose_FlowId_From_Body": {
+              "type": "Compose",
+              "inputs": "@if(contains(coalesce(triggerOutputs()?['body/body'], ''), 'AWG-FLOW-ID:'), trim(first(split(first(split(replace(replace(replace(last(split(coalesce(triggerOutputs()?['body/body'], ''), 'AWG-FLOW-ID:')), '&nbsp;', ' '), '&#160;', ' '), '</', '<'), '<')), '|'))), '')"
+            },
+            "Compose_ProcessType_From_Router_Response": {
+              "runAfter": {
+                "Compose_FlowId_From_Body": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@if(contains(toLower(coalesce(triggerOutputs()?['body/bodyPreview'], triggerOutputs()?['body/body'], '')), 'wakefern appointments'), 'Wakefern Appointments', if(contains(toLower(coalesce(triggerOutputs()?['body/bodyPreview'], triggerOutputs()?['body/body'], '')), 'no match'), 'No Match', if(contains(toLower(coalesce(triggerOutputs()?['body/bodyPreview'], triggerOutputs()?['body/body'], '')), 'consolidation'), 'Consolidation', 'No Match')))"
+            },
+            "AWG_-_CON_-_01_Get_Router_Tracking_Item": {
+              "runAfter": {
+                "Compose_Correlation_FlowId": [
+                  "Succeeded"
+                ],
+                "AWG_-_CON_-_01_Target_Email_Route_00_Folder_Id": [
+                  "Succeeded"
+                ],
+                "AWG_-_CON_-_01_Target_AWG_CON_01_Folder_Id": [
+                  "Succeeded"
+                ]
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+                  "table": "70ed8abc-c524-4142-9d8a-86f70ced426c",
+                  "$filter": "FlowId eq '@{replace(outputs('Compose_Correlation_FlowId'),'''','''''')}' and Phase eq '00-RouterSent'",
+                  "$top": 1
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                  "connectionName": "shared_sharepointonline",
+                  "operationId": "GetItems"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "AWG_-_CON_-_01_Guard_Router_Tracking_Found": {
+              "actions": {
+                "AWG_-_CON_-_01_Update_Router_Classification_Result": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "parameters": {
+                      "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+                      "table": "70ed8abc-c524-4142-9d8a-86f70ced426c",
+                      "id": "@first(body('AWG_-_CON_-_01_Get_Router_Tracking_Item')?['value'])?['ID']",
+                      "item/Status": "@outputs('Compose_ProcessType_From_Router_Response')",
+                      "item/Phase": "00-RouterClassified",
+                      "item/PhaseSince": "@utcNow()"
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                      "connectionName": "shared_sharepointonline",
+                      "operationId": "PatchItem"
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  }
+                },
+                "Compose_Original_Immutable_ID_From_Router": {
+                  "runAfter": {
+                    "AWG_-_CON_-_01_Update_Router_Classification_Result": [
+                      "Succeeded"
+                    ]
+                  },
+                  "type": "Compose",
+                  "inputs": "@first(body('AWG_-_CON_-_01_Get_Router_Tracking_Item')?['value'])?['OriginalMessageId']"
+                },
+                "Compose_Original_Conversation_ID_From_Router": {
+                  "runAfter": {
+                    "Compose_Original_Immutable_ID_From_Router": [
+                      "Succeeded"
+                    ]
+                  },
+                  "type": "Compose",
+                  "inputs": "@first(body('AWG_-_CON_-_01_Get_Router_Tracking_Item')?['value'])?['OriginalConversationId']"
+                },
+                "Compose_Original_Subject_From_Router": {
+                  "runAfter": {
+                    "Compose_Original_Conversation_ID_From_Router": [
+                      "Succeeded"
+                    ]
+                  },
+                  "type": "Compose",
+                  "inputs": "@first(body('AWG_-_CON_-_01_Get_Router_Tracking_Item')?['value'])?['OriginalSubject']"
+                },
+                "AWG_-_CON_-_01_HTTP_Get_Original_From_EmailRoute00_By_ConversationId": {
+                  "runAfter": {
+                    "Compose_Original_Subject_From_Router": [
+                      "Succeeded"
+                    ]
+                  },
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "parameters": {
+                      "Uri": "@concat('https://graph.microsoft.com/v1.0/me/mailFolders/', encodeUriComponent(outputs('AWG_-_CON_-_01_Target_Email_Route_00_Folder_Id')), '/messages?$top=50&$select=id,subject,from,conversationId,receivedDateTime,parentFolderId')",
+                      "Method": "GET",
+                      "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                      "ContentType": "application/json"
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                      "connectionName": "shared_office365",
+                      "operationId": "HttpRequest"
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  }
+                },
+                "Compose_Resolved_Original_Immutable_ID": {
+                  "runAfter": {
+                    "AWG_-_CON_-_01_Filter_Original_From_EmailRoute00_By_ConversationId": [
+                      "Succeeded"
+                    ]
+                  },
+                  "type": "Compose",
+                  "inputs": "@if(greater(length(body('AWG_-_CON_-_01_Filter_Original_From_EmailRoute00_By_ConversationId')), 0), first(body('AWG_-_CON_-_01_Filter_Original_From_EmailRoute00_By_ConversationId'))?['id'], outputs('Compose_Original_Immutable_ID_From_Router'))"
+                },
+                "AWG_-_CON_-_01_Guard_ProcessType_Consolidation": {
+                  "actions": {
+                    "AWG_-_CON_-_01_Advance_To_IntakeSent": {
+                      "runAfter": {
+                        "DEBUG_-_Consolidation_Reply_Sent_Same_Conversation": [
+                          "Succeeded"
+                        ]
+                      },
+                      "type": "OpenApiConnection",
+                      "inputs": {
+                        "parameters": {
+                          "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+                          "table": "70ed8abc-c524-4142-9d8a-86f70ced426c",
+                          "id": "@first(body('AWG_-_CON_-_01_Get_Router_Tracking_Item')?['value'])?['ID']",
+                          "item/Status": "Consolidation",
+                          "item/Phase": "01-IntakeSent",
+                          "item/PhaseSince": "@utcNow()"
+                        },
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                          "connectionName": "shared_sharepointonline",
+                          "operationId": "PatchItem"
+                        },
+                        "authentication": "@parameters('$authentication')"
+                      }
+                    },
+                    "AWG_-_CON_-_01_HTTP_Patch_Original_By_Immutable_ID": {
+                      "runAfter": {
+                        "AWG_-_CON_-_01_Advance_To_IntakeSent": [
+                          "Succeeded"
+                        ]
+                      },
+                      "type": "OpenApiConnection",
+                      "inputs": {
+                        "parameters": {
+                          "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Resolved_Original_Immutable_ID'))}",
+                          "Method": "PATCH",
+                          "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                          "Body": "{\"categories\":[\"RPA\",\"Follow up\"],\"isRead\":false}",
+                          "ContentType": "application/json"
+                        },
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                          "connectionName": "shared_office365",
+                          "operationId": "HttpRequest"
+                        },
+                        "authentication": "@parameters('$authentication')"
+                      }
+                    },
+                    "AWG_-_CON_-_01_HTTP_Move_Original_to_AWG_Complete_By_Immutable_ID": {
+                      "runAfter": {
+                        "AWG_-_CON_-_01_HTTP_Patch_Original_By_Immutable_ID": [
+                          "Succeeded"
+                        ]
+                      },
+                      "type": "OpenApiConnection",
+                      "inputs": {
+                        "parameters": {
+                          "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Resolved_Original_Immutable_ID'))}/move",
+                          "Method": "POST",
+                          "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                          "Body": "@concat('{\"destinationId\":\"', outputs('AWG_-_CON_-_01_Target_AWG_CON_01_Folder_Id'), '\"}')",
+                          "ContentType": "application/json"
+                        },
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                          "connectionName": "shared_office365",
+                          "operationId": "HttpRequest"
+                        },
+                        "authentication": "@parameters('$authentication')"
+                      }
+                    },
+                    "AWG_-_CON_-_01_Consolidation_Guard_Current_OSS_Found": {
+                      "actions": {
+                        "AWG_-_CON_-_01_Consolidation_HTTP_Mark_Current_OSS_Read": {
+                          "runAfter": {},
+                          "type": "OpenApiConnection",
+                          "inputs": {
+                            "parameters": {
+                              "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Resolved_Current_OSS_Immutable_ID'))}",
+                              "Method": "PATCH",
+                              "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                              "Body": "{\"isRead\":false,\"categories\":[\"RPA\",\"Follow up\"]}",
+                              "ContentType": "application/json"
+                            },
+                            "host": {
+                              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                              "connectionName": "shared_office365",
+                              "operationId": "HttpRequest"
+                            },
+                            "authentication": "@parameters('$authentication')"
+                          }
+                        },
+                        "AWG_-_CON_-_01_Consolidation_HTTP_Move_Current_OSS_to_AWG_Complete": {
+                          "runAfter": {
+                            "AWG_-_CON_-_01_Consolidation_HTTP_Mark_Current_OSS_Read": [
+                              "Succeeded"
+                            ]
+                          },
+                          "type": "OpenApiConnection",
+                          "inputs": {
+                            "parameters": {
+                              "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Resolved_Current_OSS_Immutable_ID'))}/move",
+                              "Method": "POST",
+                              "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                              "Body": "@concat('{\"destinationId\":\"', outputs('AWG_-_CON_-_01_Target_AWG_CON_01_Folder_Id'), '\"}')",
+                              "ContentType": "application/json"
+                            },
+                            "host": {
+                              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                              "connectionName": "shared_office365",
+                              "operationId": "HttpRequest"
+                            },
+                            "authentication": "@parameters('$authentication')"
+                          }
+                        }
+                      },
+                      "runAfter": {
+                        "AWG_-_CON_-_01_HTTP_Move_Original_to_AWG_Complete_By_Immutable_ID": [
+                          "Succeeded"
+                        ]
+                      },
+                      "else": {
+                        "actions": {
+                          "DEBUG_-_Consolidation_Current_OSS_Not_Found": {
+                            "type": "Compose",
+                            "inputs": "@concat('Current OSS not found after consolidation original handling. Check DEBUG Current OSS Lookup. ConversationId=', string(outputs('Compose_Current_OSS_Conversation_ID_From_Trigger')), ' ResolvedId=', string(outputs('Compose_Resolved_Current_OSS_Immutable_ID')))"
+                          }
+                        }
+                      },
+                      "expression": {
+                        "and": [
+                          {
+                            "not": {
+                              "equals": [
+                                "@outputs('Compose_Resolved_Current_OSS_Immutable_ID')",
+                                ""
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      "type": "If"
+                    },
+                    "AWG_-_CON_-_01_HTTP_Reply_Current_OSS_to_OSSGenAI_SameConversation": {
+                      "runAfter": {},
+                      "type": "OpenApiConnection",
+                      "inputs": {
+                        "parameters": {
+                          "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Resolved_Current_OSS_Immutable_ID'))}/reply",
+                          "Method": "POST",
+                          "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                          "Body": "{\"message\": {\"toRecipients\": [{\"emailAddress\": {\"address\": \"ossgenai.im@pg.com\"}}], \"ccRecipients\": [], \"bccRecipients\": []}, \"comment\": \"FOR ROUTING USE WORKFLOW=na_om_data_agent (AskOM)<br><br>\\n<strong>IMPORTANT - SAME THREAD READ SCOPE:</strong> This is a direct reply inside the existing Outlook conversation, not a forward. Use the latest actual customer email available in the reply history below this prompt. Do not use the subject alone. Ignore system-generated status/error emails, process completion emails, signatures, disclaimers, and older unrelated replies.<br><br>\\n<strong>Mandatory validation before extracting:</strong><br>\\nOnly continue if the actual customer email contains BOTH:<br>\\n1) a real request to ride-with, ship-with, consolidate, attach/load with another PO, or make one PO ride with another PO; and<br>\\n2) at least one explicit PO number tied to PO context such as PO, PO#, PO #, purchase order, order, main PO, rider PO, or a PO table/list.<br><br>\\nIf the email is a system/status/error notification, or if either requirement is missing, respond exactly: Is not a consolidation<br><br>\\nIf it passes validation, extract the consolidation details from the original customer email in this same conversation.<br><br>\\nReturn a table with exactly 2 columns: Truck # and PO #<br>\\nEach row must contain exactly one PO only. Never place multiple PO numbers in the same PO # cell. If multiple POs belong to the same truck, create one separate row per PO and repeat the same Truck # value on each row.<br>\\nUse Truck #1 as standard. If the customer sends more than one consolidation, use Truck #2, Truck #3, etc.<br><br>\\nRegards,<br>\\npgcustservw2.im@pg.com<br>\\nNA Order Management | Regional<br>\\n<p style=\\\"font-size:1px;color:#ffffff;line-height:1px\\\">AWG-FLOW-ID: @{outputs('Compose_Correlation_FlowId')} | AWG-STEP: CONSOLIDATION_CONFIRM</p>\"}",
+                          "ContentType": "application/json"
+                        },
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                          "connectionName": "shared_office365",
+                          "operationId": "HttpRequest"
+                        },
+                        "authentication": "@parameters('$authentication')"
+                      }
+                    },
+                    "DEBUG_-_Consolidation_Reply_Sent_Same_Conversation": {
+                      "runAfter": {
+                        "AWG_-_CON_-_01_HTTP_Reply_Current_OSS_to_OSSGenAI_SameConversation": [
+                          "Succeeded"
+                        ]
+                      },
+                      "type": "Compose",
+                      "inputs": "@concat('Replied to current OSS message instead of forwarding original. CurrentOSSId=', string(outputs('Compose_Resolved_Current_OSS_Immutable_ID')), ' | OriginalId=', string(outputs('Compose_Resolved_Original_Immutable_ID')), ' | FlowId=', string(outputs('Compose_Correlation_FlowId')))"
+                    }
+                  },
+                  "runAfter": {
+                    "Compose_Resolved_Original_Immutable_ID": [
+                      "Succeeded"
+                    ]
+                  },
+                  "else": {
+                    "actions": {
+                      "AWG_-_CON_-_01_NotConsolidation_HTTP_Move_Original_to_Client_Root": {
+                        "runAfter": {},
+                        "type": "OpenApiConnection",
+                        "inputs": {
+                          "parameters": {
+                            "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Resolved_Original_Immutable_ID'))}/move",
+                            "Method": "POST",
+                            "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                            "Body": "@concat('{\"destinationId\":\"', outputs('AWG_-_CON_-_01_Target_Client_Folder_Id'), '\"}')",
+                            "ContentType": "application/json"
+                          },
+                          "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                            "connectionName": "shared_office365",
+                            "operationId": "HttpRequest"
+                          },
+                          "authentication": "@parameters('$authentication')"
+                        }
+                      },
+                      "AWG_-_CON_-_01_NotConsolidation_HTTP_Mark_Original_Unread": {
+                        "runAfter": {
+                          "AWG_-_CON_-_01_NotConsolidation_HTTP_Move_Original_to_Client_Root": [
+                            "Succeeded"
+                          ]
+                        },
+                        "metadata": {
+                          "operationMetadataId": "mark-original-unread-after-return-to-awg-folder"
+                        },
+                        "type": "OpenApiConnection",
+                        "inputs": {
+                          "parameters": {
+                            "Uri": "v1.0/me/messages/@{encodeUriComponent(body('AWG_-_CON_-_01_NotConsolidation_HTTP_Move_Original_to_Client_Root')?['id'])}",
+                            "Method": "PATCH",
+                            "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                            "Body": "{\"isRead\":false,\"categories\":[]}",
+                            "ContentType": "application/json"
+                          },
+                          "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                            "connectionName": "shared_office365",
+                            "operationId": "HttpRequest"
+                          },
+                          "authentication": "@parameters('$authentication')"
+                        }
+                      },
+                      "AWG_-_CON_-_01_NotConsolidation_Guard_Current_OSS_Found": {
+                        "actions": {
+                          "AWG_-_CON_-_01_NotConsolidation_HTTP_Mark_Current_OSS_Read": {
+                            "runAfter": {},
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                              "parameters": {
+                                "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Resolved_Current_OSS_Immutable_ID'))}",
+                                "Method": "PATCH",
+                                "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                "Body": "{\"isRead\":true,\"categories\":[]}",
+                                "ContentType": "application/json"
+                              },
+                              "host": {
+                                "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                "connectionName": "shared_office365",
+                                "operationId": "HttpRequest"
+                              },
+                              "authentication": "@parameters('$authentication')"
+                            }
+                          },
+                          "AWG_-_CON_-_01_NotConsolidation_HTTP_Move_Current_OSS_to_AWG_Complete": {
+                            "runAfter": {
+                              "AWG_-_CON_-_01_NotConsolidation_HTTP_Mark_Current_OSS_Read": [
+                                "Succeeded"
+                              ]
+                            },
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                              "parameters": {
+                                "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Resolved_Current_OSS_Immutable_ID'))}/move",
+                                "Method": "POST",
+                                "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                "Body": "@concat('{\"destinationId\":\"', outputs('AWG_-_CON_-_01_Target_AWG_CON_01_Folder_Id'), '\"}')",
+                                "ContentType": "application/json"
+                              },
+                              "host": {
+                                "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                "connectionName": "shared_office365",
+                                "operationId": "HttpRequest"
+                              },
+                              "authentication": "@parameters('$authentication')"
+                            }
+                          }
+                        },
+                        "runAfter": {
+                          "AWG_-_CON_-_01_NotConsolidation_HTTP_Mark_Original_Unread": [
+                            "Succeeded"
+                          ]
+                        },
+                        "else": {
+                          "actions": {
+                            "DEBUG_-_NotConsolidation_Current_OSS_Not_Found": {
+                              "type": "Compose",
+                              "inputs": "@concat('Current OSS not found for non-consolidation. Original was handled, but OSS was not patched/moved. ConversationId=', string(outputs('Compose_Current_OSS_Conversation_ID_From_Trigger')), ' ResolvedId=', string(outputs('Compose_Resolved_Current_OSS_Immutable_ID')))"
+                            }
+                          }
+                        },
+                        "expression": {
+                          "and": [
+                            {
+                              "not": {
+                                "equals": [
+                                  "@outputs('Compose_Resolved_Current_OSS_Immutable_ID')",
+                                  ""
+                                ]
+                              }
+                            }
+                          ]
+                        },
+                        "type": "If"
+                      }
+                    }
+                  },
+                  "expression": {
+                    "and": [
+                      {
+                        "equals": [
+                          "@outputs('Compose_ProcessType_From_Router_Response')",
+                          "Consolidation"
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "If"
+                },
+                "AWG_-_CON_-_01_Filter_Original_From_EmailRoute00_By_ConversationId": {
+                  "runAfter": {
+                    "AWG_-_CON_-_01_HTTP_Get_Original_From_EmailRoute00_By_ConversationId": [
+                      "Succeeded"
+                    ]
+                  },
+                  "type": "Query",
+                  "inputs": {
+                    "from": "@body('AWG_-_CON_-_01_HTTP_Get_Original_From_EmailRoute00_By_ConversationId')?['value']",
+                    "where": "@and(equals(item()?['conversationId'], outputs('Compose_Original_Conversation_ID_From_Router')), not(equals(toLower(item()?['from']?['emailAddress']?['address']), 'ossgenai.im@pg.com')), not(equals(toLower(item()?['from']?['emailAddress']?['address']), 'pgcustservw2.im@pg.com')), not(equals(toLower(item()?['from']?['emailAddress']?['address']), 'pgcustservw2@pg.com')))"
+                  }
+                }
+              },
+              "runAfter": {
+                "AWG_-_CON_-_01_Get_Router_Tracking_Item": [
+                  "Succeeded"
+                ]
+              },
+              "else": {
+                "actions": {
+                  "AWG_-_CON_-_01_NoRouterTracking_Filter_Original_Candidates": {
+                    "runAfter": {
+                      "AWG_-_CON_-_01_NoRouterTracking_HTTP_List_AWGComplete_Messages": [
+                        "Succeeded"
+                      ]
+                    },
+                    "type": "Query",
+                    "inputs": {
+                      "from": "@union(union(body('AWG_-_CON_-_01_NoRouterTracking_HTTP_List_EmailRoute00_Messages')?['value'], body('AWG_-_CON_-_01_NoRouterTracking_HTTP_List_ClientRoot_Messages')?['value']), body('AWG_-_CON_-_01_NoRouterTracking_HTTP_List_AWGComplete_Messages')?['value'])",
+                      "where": "@and(equals(item()?['conversationId'], outputs('Compose_Current_OSS_Conversation_ID_From_Trigger')), not(equals(toLower(item()?['from']?['emailAddress']?['address']), 'ossgenai.im@pg.com')), not(equals(toLower(item()?['from']?['emailAddress']?['address']), 'pgcustservw2.im@pg.com')), not(equals(toLower(item()?['from']?['emailAddress']?['address']), 'pgcustservw2@pg.com')))"
+                    }
+                  },
+                  "AWG_-_CON_-_01_NoRouterTracking_Guard_Original_Found": {
+                    "actions": {
+                      "Compose_NoRouterTracking_Original_Immutable_ID": {
+                        "type": "Compose",
+                        "inputs": "@first(body('AWG_-_CON_-_01_NoRouterTracking_Filter_Original_Candidates'))?['id']"
+                      },
+                      "Compose_NoRouterTracking_Original_Parent_Folder_ID": {
+                        "runAfter": {
+                          "Compose_NoRouterTracking_Original_Immutable_ID": [
+                            "Succeeded"
+                          ]
+                        },
+                        "type": "Compose",
+                        "inputs": "@first(body('AWG_-_CON_-_01_NoRouterTracking_Filter_Original_Candidates'))?['parentFolderId']"
+                      },
+                      "AWG_-_CON_-_01_NoRouterTracking_Guard_Original_In_AWG_Complete": {
+                        "actions": {
+                          "AWG_-_CON_-_01_NoRouterTracking_Original_Already_In_AWG_Complete": {
+                            "type": "Compose",
+                            "inputs": "Original email is already in AWG Complete. Leave untouched."
+                          }
+                        },
+                        "runAfter": {
+                          "Compose_NoRouterTracking_Original_Parent_Folder_ID": [
+                            "Succeeded"
+                          ]
+                        },
+                        "else": {
+                          "actions": {
+                            "AWG_-_CON_-_01_NoRouterTracking_Guard_Original_In_Client_Root": {
+                              "actions": {
+                                "AWG_-_CON_-_01_NoRouterTracking_HTTP_Mark_Original_Unread_In_Client_Root": {
+                                  "type": "OpenApiConnection",
+                                  "inputs": {
+                                    "parameters": {
+                                      "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_NoRouterTracking_Original_Immutable_ID'))}",
+                                      "Method": "PATCH",
+                                      "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                      "Body": "{\"isRead\":false,\"categories\":[]}",
+                                      "ContentType": "application/json"
+                                    },
+                                    "host": {
+                                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                      "connectionName": "shared_office365",
+                                      "operationId": "HttpRequest"
+                                    },
+                                    "authentication": "@parameters('$authentication')"
+                                  }
+                                }
+                              },
+                              "else": {
+                                "actions": {
+                                  "AWG_-_CON_-_01_NoRouterTracking_HTTP_Move_Original_to_Client_Root": {
+                                    "type": "OpenApiConnection",
+                                    "inputs": {
+                                      "parameters": {
+                                        "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_NoRouterTracking_Original_Immutable_ID'))}/move",
+                                        "Method": "POST",
+                                        "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                        "Body": "@concat('{\"destinationId\":\"', outputs('AWG_-_CON_-_01_Target_Client_Folder_Id'), '\"}')",
+                                        "ContentType": "application/json"
+                                      },
+                                      "host": {
+                                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                        "connectionName": "shared_office365",
+                                        "operationId": "HttpRequest"
+                                      },
+                                      "authentication": "@parameters('$authentication')"
+                                    }
+                                  },
+                                  "AWG_-_CON_-_01_NoRouterTracking_HTTP_Mark_Moved_Original_Unread": {
+                                    "runAfter": {
+                                      "AWG_-_CON_-_01_NoRouterTracking_HTTP_Move_Original_to_Client_Root": [
+                                        "Succeeded"
+                                      ]
+                                    },
+                                    "type": "OpenApiConnection",
+                                    "inputs": {
+                                      "parameters": {
+                                        "Uri": "v1.0/me/messages/@{encodeUriComponent(body('AWG_-_CON_-_01_NoRouterTracking_HTTP_Move_Original_to_Client_Root')?['id'])}",
+                                        "Method": "PATCH",
+                                        "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                        "Body": "{\"isRead\":false,\"categories\":[]}",
+                                        "ContentType": "application/json"
+                                      },
+                                      "host": {
+                                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                        "connectionName": "shared_office365",
+                                        "operationId": "HttpRequest"
+                                      },
+                                      "authentication": "@parameters('$authentication')"
+                                    }
+                                  }
+                                }
+                              },
+                              "expression": {
+                                "and": [
+                                  {
+                                    "equals": [
+                                      "@outputs('Compose_NoRouterTracking_Original_Parent_Folder_ID')",
+                                      "@outputs('AWG_-_CON_-_01_Target_Client_Folder_Id')"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "type": "If"
+                            }
+                          }
+                        },
+                        "expression": {
+                          "and": [
+                            {
+                              "equals": [
+                                "@outputs('Compose_NoRouterTracking_Original_Parent_Folder_ID')",
+                                "@outputs('AWG_-_CON_-_01_Target_AWG_Complete_Folder_Id')"
+                              ]
+                            }
+                          ]
+                        },
+                        "type": "If"
+                      }
+                    },
+                    "runAfter": {
+                      "AWG_-_CON_-_01_NoRouterTracking_Filter_Original_Candidates": [
+                        "Succeeded"
+                      ]
+                    },
+                    "else": {
+                      "actions": {
+                        "AWG_-_CON_-_01_NoRouterTracking_Original_Not_Found": {
+                          "type": "Compose",
+                          "inputs": "No original candidate found in the router thread. Only the current OSS response will be archived."
+                        }
+                      }
+                    },
+                    "expression": {
+                      "and": [
+                        {
+                          "greater": [
+                            "@length(body('AWG_-_CON_-_01_NoRouterTracking_Filter_Original_Candidates'))",
+                            0
+                          ]
+                        }
+                      ]
+                    },
+                    "type": "If"
+                  },
+                  "AWG_-_CON_-_01_NoRouterTracking_HTTP_List_EmailRoute00_Messages": {
+                    "type": "OpenApiConnection",
+                    "inputs": {
+                      "parameters": {
+                        "Uri": "@concat('https://graph.microsoft.com/v1.0/me/mailFolders/', encodeUriComponent(outputs('AWG_-_CON_-_01_Target_Email_Route_00_Folder_Id')), '/messages?$top=25&$select=id,subject,from,conversationId,parentFolderId,receivedDateTime')",
+                        "Method": "GET",
+                        "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                        "ContentType": "application/json"
+                      },
+                      "host": {
+                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                        "connectionName": "shared_office365",
+                        "operationId": "HttpRequest"
+                      },
+                      "authentication": "@parameters('$authentication')"
+                    }
+                  },
+                  "AWG_-_CON_-_01_NoRouterTracking_HTTP_List_ClientRoot_Messages": {
+                    "runAfter": {
+                      "AWG_-_CON_-_01_NoRouterTracking_HTTP_List_EmailRoute00_Messages": [
+                        "Succeeded"
+                      ]
+                    },
+                    "type": "OpenApiConnection",
+                    "inputs": {
+                      "parameters": {
+                        "Uri": "@concat('https://graph.microsoft.com/v1.0/me/mailFolders/', encodeUriComponent(outputs('AWG_-_CON_-_01_Target_Client_Folder_Id')), '/messages?$top=25&$select=id,subject,from,conversationId,parentFolderId,receivedDateTime')",
+                        "Method": "GET",
+                        "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                        "ContentType": "application/json"
+                      },
+                      "host": {
+                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                        "connectionName": "shared_office365",
+                        "operationId": "HttpRequest"
+                      },
+                      "authentication": "@parameters('$authentication')"
+                    }
+                  },
+                  "AWG_-_CON_-_01_NoRouterTracking_HTTP_List_AWGComplete_Messages": {
+                    "runAfter": {
+                      "AWG_-_CON_-_01_NoRouterTracking_HTTP_List_ClientRoot_Messages": [
+                        "Succeeded"
+                      ]
+                    },
+                    "type": "OpenApiConnection",
+                    "inputs": {
+                      "parameters": {
+                        "Uri": "@concat('https://graph.microsoft.com/v1.0/me/mailFolders/', encodeUriComponent(outputs('AWG_-_CON_-_01_Target_AWG_Complete_Folder_Id')), '/messages?$top=25&$select=id,subject,from,conversationId,parentFolderId,receivedDateTime')",
+                        "Method": "GET",
+                        "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                        "ContentType": "application/json"
+                      },
+                      "host": {
+                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                        "connectionName": "shared_office365",
+                        "operationId": "HttpRequest"
+                      },
+                      "authentication": "@parameters('$authentication')"
+                    }
+                  },
+                  "AWG_-_CON_-_01_NoRouterTracking_Guard_Current_OSS_Found": {
+                    "actions": {
+                      "AWG_-_CON_-_01_NoRouterTracking_HTTP_Mark_Current_OSS_Read": {
+                        "runAfter": {},
+                        "type": "OpenApiConnection",
+                        "inputs": {
+                          "parameters": {
+                            "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Resolved_Current_OSS_Immutable_ID'))}",
+                            "Method": "PATCH",
+                            "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                            "Body": "{\"isRead\":true,\"categories\":[]}",
+                            "ContentType": "application/json"
+                          },
+                          "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                            "connectionName": "shared_office365",
+                            "operationId": "HttpRequest"
+                          },
+                          "authentication": "@parameters('$authentication')"
+                        }
+                      },
+                      "AWG_-_CON_-_01_NoRouterTracking_HTTP_Move_Current_OSS_to_AWG_Complete": {
+                        "runAfter": {
+                          "AWG_-_CON_-_01_NoRouterTracking_HTTP_Mark_Current_OSS_Read": [
+                            "Succeeded"
+                          ]
+                        },
+                        "type": "OpenApiConnection",
+                        "inputs": {
+                          "parameters": {
+                            "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Resolved_Current_OSS_Immutable_ID'))}/move",
+                            "Method": "POST",
+                            "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                            "Body": "@concat('{\"destinationId\":\"', outputs('AWG_-_CON_-_01_Target_AWG_CON_01_Folder_Id'), '\"}')",
+                            "ContentType": "application/json"
+                          },
+                          "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                            "connectionName": "shared_office365",
+                            "operationId": "HttpRequest"
+                          },
+                          "authentication": "@parameters('$authentication')"
+                        }
+                      }
+                    },
+                    "runAfter": {
+                      "AWG_-_CON_-_01_NoRouterTracking_Guard_Original_Found": [
+                        "Succeeded"
+                      ]
+                    },
+                    "else": {
+                      "actions": {
+                        "DEBUG_-_NoRouterTracking_Current_OSS_Not_Found": {
+                          "type": "Compose",
+                          "inputs": "@concat('Current OSS not found. Nothing patched/moved for OSS. Check DEBUG Current OSS Lookup. TriggerId=', string(coalesce(triggerOutputs()?['body/id'], triggerOutputs()?['body/Id'], '')), ' ConversationId=', string(outputs('Compose_Current_OSS_Conversation_ID_From_Trigger')), ' ResolvedId=', string(outputs('Compose_Resolved_Current_OSS_Immutable_ID')))"
+                        }
+                      }
+                    },
+                    "expression": {
+                      "and": [
+                        {
+                          "not": {
+                            "equals": [
+                              "@outputs('Compose_Resolved_Current_OSS_Immutable_ID')",
+                              ""
+                            ]
+                          }
+                        }
+                      ]
+                    },
+                    "type": "If"
+                  }
+                }
+              },
+              "expression": {
+                "and": [
+                  {
+                    "greater": [
+                      "@length(body('AWG_-_CON_-_01_Get_Router_Tracking_Item')?['value'])",
+                      0
+                    ]
+                  }
+                ]
+              },
+              "type": "If"
+            },
+            "Compose_Correlation_FlowId": {
+              "runAfter": {
+                "DEBUG_-_Current_OSS_Lookup_Summary": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@outputs('Compose_FlowId_From_Body')"
+            },
+            "AWG_-_CON_-_01_Get_Client_Folder": {
+              "runAfter": {
+                "Compose_Current_OSS_Conversation_ID_From_Trigger": [
+                  "Succeeded"
+                ]
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "Uri": "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/childFolders?$filter=displayName%20eq%20%27Mar%C3%ADn%2C%20Cristhofer%20-%20AWG%20%2B%20Wakefern%27&$top=1",
+                  "Method": "GET"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "connectionName": "shared_office365",
+                  "operationId": "HttpRequest"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "AWG_-_CON_-_01_Get_Email_Route_00_Folder": {
+              "runAfter": {
+                "AWG_-_CON_-_01_Target_Client_Folder_Id": [
+                  "Succeeded"
+                ]
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "Uri": "@concat('https://graph.microsoft.com/v1.0/me/mailFolders/', encodeUriComponent(outputs('AWG_-_CON_-_01_Target_Client_Folder_Id')), '/childFolders?$filter=displayName%20eq%20%27GENERAL%20-%20Email%20Route%20-%2000%27&$top=1')",
+                  "Method": "GET"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "connectionName": "shared_office365",
+                  "operationId": "HttpRequest"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "AWG_-_CON_-_01_Target_Email_Route_00_Folder_Id": {
+              "runAfter": {
+                "AWG_-_CON_-_01_Get_Email_Route_00_Folder": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@first(body('AWG_-_CON_-_01_Get_Email_Route_00_Folder')?['value'])?['id']"
+            },
+            "AWG_-_CON_-_01_Target_Client_Folder_Id": {
+              "runAfter": {
+                "AWG_-_CON_-_01_Get_Client_Folder": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@first(body('AWG_-_CON_-_01_Get_Client_Folder')?['value'])?['id']"
+            },
+            "AWG_-_CON_-_01_Get_AWG_Complete_Folder": {
+              "runAfter": {
+                "AWG_-_CON_-_01_Target_Client_Folder_Id": [
+                  "Succeeded"
+                ]
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "Uri": "@concat('https://graph.microsoft.com/v1.0/me/mailFolders/', encodeUriComponent(outputs('AWG_-_CON_-_01_Target_Client_Folder_Id')), '/childFolders?$filter=displayName%20eq%20%27AWG%20Complete%27&$top=1')",
+                  "Method": "GET"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "connectionName": "shared_office365",
+                  "operationId": "HttpRequest"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "AWG_-_CON_-_01_Target_AWG_Complete_Folder_Id": {
+              "runAfter": {
+                "AWG_-_CON_-_01_Get_AWG_Complete_Folder": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@first(body('AWG_-_CON_-_01_Get_AWG_Complete_Folder')?['value'])?['id']"
+            },
+            "AWG_-_CON_-_01_Get_AWG_CON_01_Folder": {
+              "runAfter": {
+                "AWG_-_CON_-_01_Target_AWG_Complete_Folder_Id": [
+                  "Succeeded"
+                ]
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "Uri": "@concat('https://graph.microsoft.com/v1.0/me/mailFolders/', encodeUriComponent(outputs('AWG_-_CON_-_01_Target_AWG_Complete_Folder_Id')), '/childFolders?$filter=displayName%20eq%20%27AWG%20-%20CON%20-%2001%27&$top=1')",
+                  "Method": "GET"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "connectionName": "shared_office365",
+                  "operationId": "HttpRequest"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "AWG_-_CON_-_01_Target_AWG_CON_01_Folder_Id": {
+              "runAfter": {
+                "AWG_-_CON_-_01_Get_AWG_CON_01_Folder": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@first(body('AWG_-_CON_-_01_Get_AWG_CON_01_Folder')?['value'])?['id']"
+            },
+            "Compose_Current_OSS_Conversation_ID_From_Trigger": {
+              "runAfter": {
+                "Compose_ProcessType_From_Router_Response": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@coalesce(triggerOutputs()?['body/conversationId'], triggerOutputs()?['body/ConversationId'], '')"
+            },
+            "Compose_Resolved_Current_OSS_Immutable_ID": {
+              "runAfter": {
+                "AWG_-_CON_-_01_Filter_Current_OSS_From_ClientRoot": [
+                  "Succeeded"
+                ],
+                "AWG_-_CON_-_01_Filter_Current_OSS_From_EmailRoute00": [
+                  "Succeeded"
+                ],
+                "AWG_-_CON_-_01_Filter_Current_OSS_From_AWGCON01": [
+                  "Succeeded"
+                ],
+                "AWG_-_CON_-_01_Filter_Current_OSS_From_AWGComplete": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@if(greater(length(body('AWG_-_CON_-_01_Filter_Current_OSS_From_ClientRoot')), 0), first(body('AWG_-_CON_-_01_Filter_Current_OSS_From_ClientRoot'))?['id'], if(greater(length(body('AWG_-_CON_-_01_Filter_Current_OSS_From_EmailRoute00')), 0), first(body('AWG_-_CON_-_01_Filter_Current_OSS_From_EmailRoute00'))?['id'], if(greater(length(body('AWG_-_CON_-_01_Filter_Current_OSS_From_AWGCON01')), 0), first(body('AWG_-_CON_-_01_Filter_Current_OSS_From_AWGCON01'))?['id'], if(greater(length(body('AWG_-_CON_-_01_Filter_Current_OSS_From_AWGComplete')), 0), first(body('AWG_-_CON_-_01_Filter_Current_OSS_From_AWGComplete'))?['id'], ''))))"
+            },
+            "AWG_-_CON_-_01_HTTP_List_ClientRoot_For_Current_OSS": {
+              "runAfter": {
+                "AWG_-_CON_-_01_Target_Client_Folder_Id": [
+                  "Succeeded"
+                ],
+                "Compose_Current_OSS_Conversation_ID_From_Trigger": [
+                  "Succeeded"
+                ]
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "Uri": "@concat('https://graph.microsoft.com/v1.0/me/mailFolders/', encodeUriComponent(outputs('AWG_-_CON_-_01_Target_Client_Folder_Id')), '/messages?$top=100&$select=id,subject,from,conversationId,parentFolderId,receivedDateTime,isRead,categories')",
+                  "Method": "GET",
+                  "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                  "ContentType": "application/json"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "connectionName": "shared_office365",
+                  "operationId": "HttpRequest"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "AWG_-_CON_-_01_Filter_Current_OSS_From_ClientRoot": {
+              "runAfter": {
+                "AWG_-_CON_-_01_HTTP_List_ClientRoot_For_Current_OSS": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Query",
+              "inputs": {
+                "from": "@body('AWG_-_CON_-_01_HTTP_List_ClientRoot_For_Current_OSS')?['value']",
+                "where": "@and(equals(item()?['conversationId'], outputs('Compose_Current_OSS_Conversation_ID_From_Trigger')), equals(toLower(item()?['from']?['emailAddress']?['address']), 'ossgenai.im@pg.com'))"
+              }
+            },
+            "AWG_-_CON_-_01_HTTP_List_EmailRoute00_For_Current_OSS": {
+              "runAfter": {
+                "AWG_-_CON_-_01_Target_Email_Route_00_Folder_Id": [
+                  "Succeeded"
+                ],
+                "Compose_Current_OSS_Conversation_ID_From_Trigger": [
+                  "Succeeded"
+                ]
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "Uri": "@concat('https://graph.microsoft.com/v1.0/me/mailFolders/', encodeUriComponent(outputs('AWG_-_CON_-_01_Target_Email_Route_00_Folder_Id')), '/messages?$top=100&$select=id,subject,from,conversationId,parentFolderId,receivedDateTime,isRead,categories')",
+                  "Method": "GET",
+                  "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                  "ContentType": "application/json"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "connectionName": "shared_office365",
+                  "operationId": "HttpRequest"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "AWG_-_CON_-_01_Filter_Current_OSS_From_EmailRoute00": {
+              "runAfter": {
+                "AWG_-_CON_-_01_HTTP_List_EmailRoute00_For_Current_OSS": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Query",
+              "inputs": {
+                "from": "@body('AWG_-_CON_-_01_HTTP_List_EmailRoute00_For_Current_OSS')?['value']",
+                "where": "@and(equals(item()?['conversationId'], outputs('Compose_Current_OSS_Conversation_ID_From_Trigger')), equals(toLower(item()?['from']?['emailAddress']?['address']), 'ossgenai.im@pg.com'))"
+              }
+            },
+            "AWG_-_CON_-_01_HTTP_List_AWGComplete_For_Current_OSS": {
+              "runAfter": {
+                "AWG_-_CON_-_01_Target_AWG_Complete_Folder_Id": [
+                  "Succeeded"
+                ],
+                "Compose_Current_OSS_Conversation_ID_From_Trigger": [
+                  "Succeeded"
+                ]
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "Uri": "@concat('https://graph.microsoft.com/v1.0/me/mailFolders/', encodeUriComponent(outputs('AWG_-_CON_-_01_Target_AWG_Complete_Folder_Id')), '/messages?$top=100&$select=id,subject,from,conversationId,parentFolderId,receivedDateTime,isRead,categories')",
+                  "Method": "GET",
+                  "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                  "ContentType": "application/json"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "connectionName": "shared_office365",
+                  "operationId": "HttpRequest"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "AWG_-_CON_-_01_Filter_Current_OSS_From_AWGComplete": {
+              "runAfter": {
+                "AWG_-_CON_-_01_HTTP_List_AWGComplete_For_Current_OSS": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Query",
+              "inputs": {
+                "from": "@body('AWG_-_CON_-_01_HTTP_List_AWGComplete_For_Current_OSS')?['value']",
+                "where": "@and(equals(item()?['conversationId'], outputs('Compose_Current_OSS_Conversation_ID_From_Trigger')), equals(toLower(item()?['from']?['emailAddress']?['address']), 'ossgenai.im@pg.com'))"
+              }
+            },
+            "AWG_-_CON_-_01_HTTP_List_AWGCON01_For_Current_OSS": {
+              "runAfter": {
+                "AWG_-_CON_-_01_Target_AWG_CON_01_Folder_Id": [
+                  "Succeeded"
+                ],
+                "Compose_Current_OSS_Conversation_ID_From_Trigger": [
+                  "Succeeded"
+                ]
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "Uri": "@concat('https://graph.microsoft.com/v1.0/me/mailFolders/', encodeUriComponent(outputs('AWG_-_CON_-_01_Target_AWG_CON_01_Folder_Id')), '/messages?$top=100&$select=id,subject,from,conversationId,parentFolderId,receivedDateTime,isRead,categories')",
+                  "Method": "GET",
+                  "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                  "ContentType": "application/json"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "connectionName": "shared_office365",
+                  "operationId": "HttpRequest"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "AWG_-_CON_-_01_Filter_Current_OSS_From_AWGCON01": {
+              "runAfter": {
+                "AWG_-_CON_-_01_HTTP_List_AWGCON01_For_Current_OSS": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Query",
+              "inputs": {
+                "from": "@body('AWG_-_CON_-_01_HTTP_List_AWGCON01_For_Current_OSS')?['value']",
+                "where": "@and(equals(item()?['conversationId'], outputs('Compose_Current_OSS_Conversation_ID_From_Trigger')), equals(toLower(item()?['from']?['emailAddress']?['address']), 'ossgenai.im@pg.com'))"
+              }
+            },
+            "DEBUG_-_Current_OSS_Lookup_Summary": {
+              "runAfter": {
+                "Compose_Resolved_Current_OSS_Immutable_ID": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@concat('FlowId=', string(outputs('Compose_FlowId_From_Body')), ' | ProcessType=', string(outputs('Compose_ProcessType_From_Router_Response')), ' | TriggerId=', string(coalesce(triggerOutputs()?['body/id'], triggerOutputs()?['body/Id'], '')), ' | TriggerConversationId=', string(outputs('Compose_Current_OSS_Conversation_ID_From_Trigger')), ' | ClientRootMatches=', string(length(body('AWG_-_CON_-_01_Filter_Current_OSS_From_ClientRoot'))), ' | EmailRoute00Matches=', string(length(body('AWG_-_CON_-_01_Filter_Current_OSS_From_EmailRoute00'))), ' | AWGCON01Matches=', string(length(body('AWG_-_CON_-_01_Filter_Current_OSS_From_AWGCON01'))), ' | AWGCompleteMatches=', string(length(body('AWG_-_CON_-_01_Filter_Current_OSS_From_AWGComplete'))), ' | ResolvedCurrentOSSId=', string(outputs('Compose_Resolved_Current_OSS_Immutable_ID')) )"
+            },
+            "DEBUG_-_Current_OSS_ClientRoot_Matches": {
+              "runAfter": {
+                "Compose_Resolved_Current_OSS_Immutable_ID": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@body('AWG_-_CON_-_01_Filter_Current_OSS_From_ClientRoot')"
+            },
+            "DEBUG_-_Current_OSS_EmailRoute00_Matches": {
+              "runAfter": {
+                "Compose_Resolved_Current_OSS_Immutable_ID": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@body('AWG_-_CON_-_01_Filter_Current_OSS_From_EmailRoute00')"
+            },
+            "DEBUG_-_Current_OSS_AWGCON01_Matches": {
+              "runAfter": {
+                "Compose_Resolved_Current_OSS_Immutable_ID": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@body('AWG_-_CON_-_01_Filter_Current_OSS_From_AWGCON01')"
+            },
+            "DEBUG_-_Current_OSS_AWGComplete_Matches": {
+              "runAfter": {
+                "Compose_Resolved_Current_OSS_Immutable_ID": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@body('AWG_-_CON_-_01_Filter_Current_OSS_From_AWGComplete')"
+            }
+          },
+          "runAfter": {
+            "Compose_SenderEmail": [
+              "Succeeded"
+            ]
+          },
+          "else": {
+            "actions": {}
+          },
+          "expression": {
+            "and": [
+              {
+                "equals": [
+                  "@outputs('Compose_SenderEmail')",
+                  "ossgenai.im@pg.com"
+                ]
+              }
+            ]
+          },
+          "type": "If"
+        }
+      },
+      "outputs": {}
+    },
+    "templateName": null
+  },
+  "schemaVersion": "1.0.0.0"
+}
