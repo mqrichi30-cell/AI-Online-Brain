@@ -85,4 +85,23 @@ console.log("\nT5  a new unmatched Ship-to alongside matched ones gets its own P
     check("pending rows created", pend(d).sort(), ["AWG NEBRASKA", "CREST FOODS"]);
 }
 
+
+console.log("\nT6  every address across a Ship-to's category rows is merged, blanks dropped");
+{
+    const v = [HDR, row("ASSOCIATED WHOL GROC INC", "AWG St. Cloud", "111"), BLANK];
+    // Real shape from the Contacts Data Base: one row per category, and the
+    // recipient list is NOT identical across them. Note the trailing "; ".
+    const contacts = JSON.stringify([
+        { name: "AWG St. Cloud", email: "curtis.bradford@awginc.com; " },
+        { name: "AWG St. Cloud", email: "curtis.bradford@awginc.com; tyan.burnett@awginc.com" },
+        { name: "AWG St. Cloud", email: "" },
+        { name: "AWG ST. CLOUD", email: "CURTIS.BRADFORD@awginc.com" },
+    ]);
+    const d = main(wb(v), contacts, "");
+    check("drafts", d.length, 1);
+    check("matched", d[0].matched, true);
+    check("to", d[0].to, "curtis.bradford@awginc.com; tyan.burnett@awginc.com");
+    check("no empty address token", d[0].to.split(";").filter((p) => p.trim() === "").length, 0);
+}
+
 console.log(failures === 0 ? "\nALL PASS\n" : "\n" + failures + " FAILURE(S)\n");

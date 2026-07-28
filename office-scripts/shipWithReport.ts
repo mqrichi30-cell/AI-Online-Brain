@@ -163,18 +163,32 @@ function main(
     }
 
     // --- Contact lookup --------------------------------------------------------
-    // Keyed on the normalised Ship-to name. Rows with a blank email are skipped
-    // and the first non-blank email wins, so a duplicate or half-filled row can
-    // never wipe out a Ship-to that already has a contact.
+    // Keyed on the normalised Ship-to name. The Contacts Data Base holds one row
+    // per Ship-to x Category and those rows do NOT always carry the same
+    // recipients, so every address found for a Ship-to is merged into one list:
+    // no row can shadow another, blanks and trailing separators are dropped, and
+    // duplicates collapse case-insensitively.
     const contacts: Contact[] = contactsJson ? JSON.parse(contactsJson) : [];
-    const contactMap: { [key: string]: string } = {};
+    const contactEmails: { [key: string]: string[] } = {};
     for (const c of contacts) {
         if (!c || !c.name) continue;
-        const email = String(c.email || "").trim();
-        if (email === "") continue;
         const key = normName(c.name);
-        if (contactMap[key] === undefined) {
-            contactMap[key] = email;
+        if (!contactEmails[key]) contactEmails[key] = [];
+        const found = contactEmails[key];
+        for (const part of String(c.email || "").split(";")) {
+            const address = part.trim();
+            if (address === "") continue;
+            let seen = false;
+            for (const existing of found) {
+                if (existing.toLowerCase() === address.toLowerCase()) { seen = true; break; }
+            }
+            if (!seen) found.push(address);
+        }
+    }
+    const contactMap: { [key: string]: string } = {};
+    for (const key of Object.keys(contactEmails)) {
+        if (contactEmails[key].length > 0) {
+            contactMap[key] = contactEmails[key].join("; ");
         }
     }
 
