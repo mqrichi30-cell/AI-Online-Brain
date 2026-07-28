@@ -155,7 +155,7 @@
                               "parameters": {
                                 "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
                                 "table": "70ed8abc-c524-4142-9d8a-86f70ced426c",
-                                "$filter": "OriginalMessageId eq '@{replace(outputs('Compose_Original_Immutable_ID'),'''','''''')}' or OriginalConversationId eq '@{replace(outputs('Compose_Original_Conversation_ID'),'''','''''')}'",
+                                "$filter": "OriginalConversationId eq '@{replace(outputs('Compose_Original_Conversation_ID'),'''','''''')}'",
                                 "$top": 1
                               },
                               "host": {
