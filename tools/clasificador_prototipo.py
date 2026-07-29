@@ -34,6 +34,22 @@ NEGACIONES = [
     'do not ship with', 'cancel the consolidation', 'cancel the ship with',
 ]
 
+# Remitentes cuyo correo nunca se procesa. Se comparan en minusculas; una
+# entrada que empiece por "@" bloquea el dominio entero.
+REMITENTES_BLOQUEADOS = [
+    'cpusched.im@pg.com',
+    'execution.im@pg.com',
+]
+
+# Frases que revelan una CONSULTA de informacion, no una peticion de accion.
+# "Do you have details on PO 27329 being cancelled?" no pide cancelar nada.
+CONSULTAS_INFO = [
+    'do you have details', 'do you have any details', 'any details on',
+    'do you know', 'do you have info', 'i am not finding',
+    "i'm not finding", 'i see your id', 'can you confirm if',
+    'do you have an update', 'any update on',
+]
+
 RE_PO = re.compile(r'\b(?:po|p\.o\.|purchase order)s?\b[^\n]{0,40}?(\d{4,8})', re.I)
 # Los SO de AWG son numeros de 10 digitos y a menudo llegan en lista, uno por
 # linea, lejos de la palabra "SO". Se detectan por forma, excluyendo telefonos.
@@ -62,10 +78,30 @@ def identificadores(texto: str):
     return pos, sos
 
 
-def clasificar(asunto: str, cuerpo: str):
+def remitente_bloqueado(remitente: str) -> str:
+    r = (remitente or '').lower().strip()
+    for entrada in REMITENTES_BLOQUEADOS:
+        e = entrada.lower().strip()
+        if e.startswith('@'):
+            if r.endswith(e):
+                return entrada
+        elif e and e in r:
+            return entrada
+    return ''
+
+
+def clasificar(asunto: str, cuerpo: str, remitente: str = ''):
     """Devuelve (tipo, motivo). El asunto cuenta: a veces el PO solo esta ahi."""
+    bloqueado = remitente_bloqueado(remitente)
+    if bloqueado:
+        return 'No Match', f'remitente bloqueado: {bloqueado}'
+
     reciente = recortar(cuerpo)
     ambito = f'{asunto}\n{reciente}'.lower()
+
+    for frase in CONSULTAS_INFO:
+        if frase in ambito:
+            return 'No Match', f'consulta de informacion, no peticion: "{frase}"'
 
     for frase in NEGACIONES:
         if frase in ambito:
