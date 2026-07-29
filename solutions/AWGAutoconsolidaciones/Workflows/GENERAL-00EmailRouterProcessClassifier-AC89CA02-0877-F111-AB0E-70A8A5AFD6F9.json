@@ -87,6 +87,29 @@
                   "GENERAL_-_00_DEBUG_AI_System_or_Routed_Email_Skipped": {
                     "type": "Compose",
                     "inputs": "@concat('Skipped: AI/system/routed email blocked. Subject=', coalesce(triggerOutputs()?['body/subject'], ''), ' | From=', string(triggerOutputs()?['body/from']))"
+                  },
+                  "GENERAL_-_00_HTTP_Tag_Wakefern_Detected": {
+                    "runAfter": {
+                      "GENERAL_-_00_DEBUG_AI_System_or_Routed_Email_Skipped": [
+                        "Succeeded"
+                      ]
+                    },
+                    "type": "OpenApiConnection",
+                    "inputs": {
+                      "parameters": {
+                        "Uri": "v1.0/me/messages/@{encodeUriComponent(triggerOutputs()?['body/id'])}",
+                        "Method": "PATCH",
+                        "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                        "Body": "{\"categories\":[\"RPA\",\"Wakefern detected\"]}",
+                        "ContentType": "application/json"
+                      },
+                      "host": {
+                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                        "connectionName": "shared_office365",
+                        "operationId": "HttpRequest"
+                      },
+                      "authentication": "@parameters('$authentication')"
+                    }
                   }
                 },
                 "runAfter": {
@@ -171,6 +194,29 @@
                               "GENERAL_-_00_DEBUG_Already_Routed_Skipped": {
                                 "type": "Compose",
                                 "inputs": "@concat('Skipped: SharePoint already has a router record for this conversation or subject. Subject=', coalesce(triggerOutputs()?['body/subject'], ''), ' | ConversationId=', outputs('Compose_Original_Conversation_ID'))"
+                              },
+                              "GENERAL_-_00_HTTP_Tag_Duplicate_And_Unread": {
+                                "runAfter": {
+                                  "GENERAL_-_00_DEBUG_Already_Routed_Skipped": [
+                                    "Succeeded"
+                                  ]
+                                },
+                                "type": "OpenApiConnection",
+                                "inputs": {
+                                  "parameters": {
+                                    "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Original_Immutable_ID'))}",
+                                    "Method": "PATCH",
+                                    "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                    "Body": "{\"isRead\":false,\"categories\":[\"RPA\",\"Duplicate\"]}",
+                                    "ContentType": "application/json"
+                                  },
+                                  "host": {
+                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                    "connectionName": "shared_office365",
+                                    "operationId": "HttpRequest"
+                                  },
+                                  "authentication": "@parameters('$authentication')"
+                                }
                               }
                             },
                             "runAfter": {
