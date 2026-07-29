@@ -230,7 +230,7 @@
                                   "type": "Compose",
                                   "inputs": "@guid()",
                                   "runAfter": {
-                                    "GENERAL_-_00_HTTP_Patch_Original_Read_Tags": [
+                                    "GENERAL_-_00_DEBUG_Rule_Result": [
                                       "Succeeded"
                                     ]
                                   }
@@ -250,9 +250,9 @@
                                       "item/OriginalMessageId": "@outputs('Compose_Original_Immutable_ID')",
                                       "item/OriginalConversationId": "@outputs('Compose_Original_Conversation_ID')",
                                       "item/OriginalSubject": "@triggerOutputs()?['body/subject']",
-                                      "item/Status": "Flow0-PromptSentToIA",
+                                      "item/Status": "@if(equals(outputs('GENERAL_-_00_Rule_Classification'), 'Consolidation'), 'Consolidation', if(equals(outputs('GENERAL_-_00_Rule_Classification'), 'Cancellation'), 'Cancellation', 'Flow0-PromptSentToIA'))",
                                       "item/FlowId": "@outputs('Compose_FlowId')",
-                                      "item/Phase": "00-RouterSent",
+                                      "item/Phase": "@if(equals(outputs('GENERAL_-_00_Rule_Classification'), 'Consolidation'), '01-IntakeSent', if(equals(outputs('GENERAL_-_00_Rule_Classification'), 'Cancellation'), '00-RuleCancellation', '00-RouterSent'))",
                                       "item/PhaseSince": "@utcNow()"
                                     },
                                     "host": {
@@ -265,7 +265,7 @@
                                 },
                                 "GENERAL_-_00_Update_Classifier_Reply_Draft_To_OSSGenAI": {
                                   "runAfter": {
-                                    "GENERAL_-_00_HTTP_Reply_Original_to_OSSGenAI_SameThread": [
+                                    "GENERAL_-_00_Guard_Rule_Is_Cancellation": [
                                       "Succeeded"
                                     ]
                                   },
@@ -352,29 +352,6 @@
                                     "authentication": "@parameters('$authentication')"
                                   }
                                 },
-                                "GENERAL_-_00_HTTP_Reply_Original_to_OSSGenAI_SameThread": {
-                                  "runAfter": {
-                                    "GENERAL_-_00_Create_Router_Tracking_Record": [
-                                      "Succeeded"
-                                    ]
-                                  },
-                                  "type": "OpenApiConnection",
-                                  "inputs": {
-                                    "parameters": {
-                                      "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Original_Immutable_ID'))}/reply",
-                                      "Method": "POST",
-                                      "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
-                                      "ContentType": "application/json",
-                                      "Body": "{\"message\": {\"toRecipients\": [{\"emailAddress\": {\"address\": \"ossgenai.im@pg.com\"}}], \"ccRecipients\": [], \"bccRecipients\": []}, \"comment\": \"FOR ROUTING USE WORKFLOW=na_om_data_agent (AskOM)<br><br>\\n<strong>READ SCOPE:</strong> Read only the latest actual customer email contained in the reply history below this prompt. Ignore this prompt, older replies, forwarded history that is not the latest customer request, signatures, disclaimers, and system-generated status messages.<br><br>\\nClassify this email into exactly one process type.<br><br>\\n<strong>Hard exclusion rules:</strong><br>\\nIf the latest message is a system/status/error notification, classify it as No Match. This includes messages with phrases like: Email Not Found, ACTION REQUIRED, process has completed execution, no unread emails found, Please do not respond directly, system-generated email, below changes have been made.<br>\\nDo not classify as Consolidation just because the subject or body contains the word consolidate, consolidation, AWG, PO, or action required.<br><br>\\n<strong>Classification rules:</strong><br>\\nIf the sender is steve.salotti@wakefern.com and the subject contains RPA EMAIL REQUEST TO CHANGES, classify it as Wakefern Appointments.<br>\\nClassify as Consolidation only when the latest actual customer email contains BOTH:<br>\\n1) an explicit customer request to ride-with, ship-with, consolidate, attach/load with another PO, or make one PO ride with another PO; and<br>\\n2) at least one explicit PO number. A PO number must be tied to PO context, such as PO, PO#, PO #, purchase order, order, main PO, rider PO, or a PO table/list. Do not treat dates, times, phone numbers, ticket numbers, or flow IDs as PO numbers.<br>\\nIf either requirement is missing, classify as No Match.<br><br>\\n<strong>Output rules:</strong><br>\\nReturn only one table. The table must have exactly one column and exactly one data row.<br>\\nThe column header must be exactly: ProcessType<br>\\nThe value under ProcessType must be exactly one of these three values: Consolidation, Wakefern Appointments, No Match<br>\\nDo not add explanations, comments, or text before or after the table.<br>\\n<p style=\\\"font-size:1px;color:#ffffff;line-height:1px\\\">AWG-FLOW-ID: @{outputs('Compose_FlowId')} | AWG-STEP: PROCESS_CLASSIFIER</p>\"}"
-                                    },
-                                    "host": {
-                                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
-                                      "connectionName": "shared_office365",
-                                      "operationId": "HttpRequest"
-                                    },
-                                    "authentication": "@parameters('$authentication')"
-                                  }
-                                },
                                 "GENERAL_-_00_HTTP_Patch_Original_Read_Tags": {
                                   "runAfter": {},
                                   "type": "OpenApiConnection",
@@ -392,6 +369,167 @@
                                       "operationId": "HttpRequest"
                                     },
                                     "authentication": "@parameters('$authentication')"
+                                  }
+                                },
+                                "GENERAL_-_00_Rule_Client_Message": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_HTTP_Patch_Original_Read_Tags": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "Compose",
+                                  "inputs": "@first(split(first(split(first(split(first(split(first(split(first(split(coalesce(triggerOutputs()?['body/body'], ''), 'FOR ROUTING USE WORKFLOW=')), '-----Original Message-----')), '________________________________')), '\\nFrom:')), '\\nSent:')), ' wrote:'))"
+                                },
+                                "GENERAL_-_00_Rule_Scope": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_Rule_Client_Message": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "Compose",
+                                  "inputs": "@toLower(concat(coalesce(triggerOutputs()?['body/subject'], ''), ' \\n ', outputs('GENERAL_-_00_Rule_Client_Message')))"
+                                },
+                                "GENERAL_-_00_Rule_Sender": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_Rule_Scope": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "Compose",
+                                  "inputs": "@toLower(string(coalesce(triggerOutputs()?['body/from'], '')))"
+                                },
+                                "GENERAL_-_00_Rule_Blocked": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_Rule_Sender": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "Compose",
+                                  "inputs": "@or(contains(outputs('GENERAL_-_00_Rule_Sender'), 'cpusched.im@pg.com'),contains(outputs('GENERAL_-_00_Rule_Sender'), 'execution.im@pg.com'))"
+                                },
+                                "GENERAL_-_00_Rule_Inquiry": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_Rule_Blocked": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "Compose",
+                                  "inputs": "@or(contains(outputs('GENERAL_-_00_Rule_Scope'), 'do you have details'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'any details on'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'do you know'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'do you have info'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'i'm not finding'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'i am not finding'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'i see your id'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'can you confirm if'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'any update on'))"
+                                },
+                                "GENERAL_-_00_Rule_Negation": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_Rule_Inquiry": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "Compose",
+                                  "inputs": "@or(contains(outputs('GENERAL_-_00_Rule_Scope'), 'do not consolidate'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'no longer need'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'do not ship with'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'cancel the consolidation'))"
+                                },
+                                "GENERAL_-_00_Rule_Cancellation": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_Rule_Negation": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "Compose",
+                                  "inputs": "@or(contains(outputs('GENERAL_-_00_Rule_Scope'), 'cancel'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'delete'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'void the order'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'void po'))"
+                                },
+                                "GENERAL_-_00_Rule_Consolidation": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_Rule_Cancellation": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "Compose",
+                                  "inputs": "@or(contains(outputs('GENERAL_-_00_Rule_Scope'), 'consolidate'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'consolidat'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'ship together'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'ship with'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'ride with'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'riding with'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'combine'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'pairing'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'load with'))"
+                                },
+                                "GENERAL_-_00_Rule_Classification": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_Rule_Consolidation": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "Compose",
+                                  "inputs": "@if(outputs('GENERAL_-_00_Rule_Blocked'), 'No Match', if(outputs('GENERAL_-_00_Rule_Inquiry'), 'No Match', if(outputs('GENERAL_-_00_Rule_Negation'), 'No Match', if(outputs('GENERAL_-_00_Rule_Cancellation'), 'Cancellation', if(outputs('GENERAL_-_00_Rule_Consolidation'), 'Consolidation', 'No Match')))))"
+                                },
+                                "GENERAL_-_00_DEBUG_Rule_Result": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_Rule_Classification": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "Compose",
+                                  "inputs": "@concat('Reglas => ', outputs('GENERAL_-_00_Rule_Classification'), ' | bloqueado=', string(outputs('GENERAL_-_00_Rule_Blocked')), ' | consulta=', string(outputs('GENERAL_-_00_Rule_Inquiry')), ' | negacion=', string(outputs('GENERAL_-_00_Rule_Negation')), ' | cancel=', string(outputs('GENERAL_-_00_Rule_Cancellation')), ' | consol=', string(outputs('GENERAL_-_00_Rule_Consolidation')), ' | texto=', substring(outputs('GENERAL_-_00_Rule_Client_Message'), 0, min(400, length(outputs('GENERAL_-_00_Rule_Client_Message')))))"
+                                },
+                                "GENERAL_-_00_Rule_Reply_Comment": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_Create_Router_Tracking_Record": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "Compose",
+                                  "inputs": "@if(equals(outputs('GENERAL_-_00_Rule_Classification'), 'Consolidation'), 'FOR ROUTING USE WORKFLOW=na_om_data_agent (AskOM)<br><br><strong>READ SCOPE:</strong> Use the latest actual customer email in the reply history below this prompt. Ignore this prompt, older replies, signatures, disclaimers and system-generated status messages.<br><br>Extract the consolidation details from that customer email.<br><br>Return a table with exactly 2 columns: Truck # and PO #<br>Each row must contain exactly one PO only. Never place multiple PO numbers in the same PO # cell. If multiple POs belong to the same truck, create one separate row per PO and repeat the same Truck # value on each row.<br>Use Truck #1 as standard. If the customer sends more than one consolidation, use Truck #2, Truck #3, etc.<br>If the email is a system/status/error notification, or has no explicit PO or SO number, respond exactly: Is not a consolidation<br><br>Regards,<br>pgcustservw2.im@pg.com<br>NA Order Management | Regional<br><p style='font-size:1px;color:#ffffff;line-height:1px'>AWG-FLOW-ID: @{outputs('Compose_FlowId')} | AWG-STEP: CONSOLIDATION_CONFIRM</p>', 'FOR ROUTING USE WORKFLOW=na_om_data_agent (AskOM)<br><br><strong>READ SCOPE:</strong> Read only the latest actual customer email in the reply history below this prompt. Ignore this prompt, older replies, signatures, disclaimers and system-generated status messages.<br><br>Classify this email into exactly one process type.<br><br><strong>Output rules:</strong><br>Return only one table, with exactly one column and exactly one data row.<br>The column header must be exactly: ProcessType<br>The value must be exactly one of: Consolidation, Cancellation, Wakefern Appointments, No Match<br>Do not add explanations, comments, or any text before or after the table.<br>Do not look up order data. Do not return purchase order, sales order, delivery or shipment information.<br><br><p style='font-size:1px;color:#ffffff;line-height:1px'>AWG-FLOW-ID: @{outputs('Compose_FlowId')} | AWG-STEP: PROCESS_CLASSIFIER</p>')"
+                                },
+                                "GENERAL_-_00_Guard_Rule_Is_Cancellation": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_Rule_Reply_Comment": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "If",
+                                  "expression": {
+                                    "and": [
+                                      {
+                                        "equals": [
+                                          "@outputs('GENERAL_-_00_Rule_Classification')",
+                                          "Cancellation"
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  "actions": {
+                                    "GENERAL_-_00_HTTP_Tag_Cancellation_Pending": {
+                                      "runAfter": {},
+                                      "type": "OpenApiConnection",
+                                      "inputs": {
+                                        "parameters": {
+                                          "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Original_Immutable_ID'))}",
+                                          "Method": "PATCH",
+                                          "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                          "Body": "{\"isRead\":false,\"categories\":[\"RPA\",\"Cancellation\"]}",
+                                          "ContentType": "application/json"
+                                        },
+                                        "host": {
+                                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                          "connectionName": "shared_office365",
+                                          "operationId": "HttpRequest"
+                                        },
+                                        "authentication": "@parameters('$authentication')"
+                                      }
+                                    }
+                                  },
+                                  "else": {
+                                    "actions": {
+                                      "GENERAL_-_00_HTTP_Reply_Original_to_OSSGenAI_SameThread": {
+                                        "runAfter": {},
+                                        "type": "OpenApiConnection",
+                                        "inputs": {
+                                          "parameters": {
+                                            "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Original_Immutable_ID'))}/reply",
+                                            "Method": "POST",
+                                            "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                            "ContentType": "application/json",
+                                            "Body": "@concat('{\"message\": {\"toRecipients\": [{\"emailAddress\": {\"address\": \"ossgenai.im@pg.com\"}}], \"ccRecipients\": [], \"bccRecipients\": []}, \"comment\": \"', outputs('GENERAL_-_00_Rule_Reply_Comment'), '\"}')"
+                                          },
+                                          "host": {
+                                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                            "connectionName": "shared_office365",
+                                            "operationId": "HttpRequest"
+                                          },
+                                          "authentication": "@parameters('$authentication')"
+                                        }
+                                      }
+                                    }
                                   }
                                 }
                               }
