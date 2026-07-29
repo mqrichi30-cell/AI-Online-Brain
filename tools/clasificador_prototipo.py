@@ -25,7 +25,8 @@ CONSOLIDACION = [
     'combine', 'pairing', 'load with', 'attach to',
 ]
 CANCELACION = [
-    'cancel', 'cancellation', 'cancelled', 'void the order', 'void po',
+    'cancel', 'cancellation', 'cancelled', 'canceled',
+    'delete', 'void the order', 'void po',
 ]
 # Frases que niegan la peticion aunque aparezca el verbo.
 NEGACIONES = [
@@ -34,7 +35,10 @@ NEGACIONES = [
 ]
 
 RE_PO = re.compile(r'\b(?:po|p\.o\.|purchase order)s?\b[^\n]{0,40}?(\d{4,8})', re.I)
-RE_SO = re.compile(r'\bso\b[^\n]{0,20}?(\d{9,12})', re.I)
+# Los SO de AWG son numeros de 10 digitos y a menudo llegan en lista, uno por
+# linea, lejos de la palabra "SO". Se detectan por forma, excluyendo telefonos.
+RE_SO = re.compile(r'(?<![\d.-])(\d{10})(?![\d.-])')
+RE_TEL = re.compile(r'(?:phone|tel|cell|ext)', re.I)
 
 
 def recortar(cuerpo: str) -> str:
@@ -52,7 +56,10 @@ def recortar(cuerpo: str) -> str:
 
 
 def identificadores(texto: str):
-    return RE_PO.findall(texto), RE_SO.findall(texto)
+    pos = RE_PO.findall(texto)
+    sos = [n for linea in texto.split('\n') if not RE_TEL.search(linea)
+           for n in RE_SO.findall(linea)]
+    return pos, sos
 
 
 def clasificar(asunto: str, cuerpo: str):
