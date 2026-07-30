@@ -378,7 +378,7 @@
                                     ]
                                   },
                                   "type": "Compose",
-                                  "inputs": "@first(split(first(split(first(split(first(split(first(split(first(split(coalesce(triggerOutputs()?['body/body'], ''), 'FOR ROUTING USE WORKFLOW=')), '-----Original Message-----')), '________________________________')), '\\nFrom:')), '\\nSent:')), ' wrote:'))"
+                                  "inputs": "@first(split(first(split(first(split(first(split(first(split(first(split(coalesce(triggerOutputs()?['body/body'], ''), 'FOR ROUTING USE WORKFLOW=')), '-----Original Message-----')), '________________________________')), 'From:')), 'Sent:')), ' wrote:'))"
                                 },
                                 "GENERAL_-_00_Rule_Scope": {
                                   "runAfter": {
@@ -387,7 +387,7 @@
                                     ]
                                   },
                                   "type": "Compose",
-                                  "inputs": "@toLower(concat(coalesce(triggerOutputs()?['body/subject'], ''), ' \\n ', outputs('GENERAL_-_00_Rule_Client_Message')))"
+                                  "inputs": "@toLower(concat(coalesce(triggerOutputs()?['body/subject'], ''), ' ', outputs('GENERAL_-_00_Rule_Client_Message')))"
                                 },
                                 "GENERAL_-_00_Rule_Sender": {
                                   "runAfter": {
@@ -414,7 +414,7 @@
                                     ]
                                   },
                                   "type": "Compose",
-                                  "inputs": "@or(contains(outputs('GENERAL_-_00_Rule_Scope'), 'do you have details'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'any details on'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'do you know'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'do you have info'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'i'm not finding'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'i am not finding'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'i see your id'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'can you confirm if'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'any update on'))"
+                                  "inputs": "@or(contains(outputs('GENERAL_-_00_Rule_Scope'), 'do you have details'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'any details on'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'do you know'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'do you have info'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'i''m not finding'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'i am not finding'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'i see your id'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'can you confirm if'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'any update on'))"
                                 },
                                 "GENERAL_-_00_Rule_Negation": {
                                   "runAfter": {
