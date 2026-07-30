@@ -151,7 +151,7 @@
                           },
                           "Compose_Original_Conversation_ID": {
                             "runAfter": {
-                              "GENERAL_-_00_Get_Current_Immutable_ID": [
+                              "Compose_Original_Immutable_ID": [
                                 "Succeeded"
                               ]
                             },
