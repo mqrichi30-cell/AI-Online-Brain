@@ -13,7 +13,7 @@ OUT="dist/AWGAutoconsolidaciones_${VER//./_}.zip"
 
 extra=$(find "$SRC" -maxdepth 1 -mindepth 1 \
   ! -name Workflows ! -name customizations.xml ! -name solution.xml \
-  ! -name '[Content_Types].xml')
+  ! -name '\[Content_Types\].xml')
 if [ -n "$extra" ]; then
   echo "Hay ficheros que no pertenecen a la solucion:" >&2
   echo "$extra" >&2
