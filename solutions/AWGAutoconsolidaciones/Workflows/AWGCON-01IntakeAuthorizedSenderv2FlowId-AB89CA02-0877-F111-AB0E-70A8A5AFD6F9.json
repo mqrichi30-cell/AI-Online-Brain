@@ -219,7 +219,7 @@
                           "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Resolved_Original_Immutable_ID'))}",
                           "Method": "PATCH",
                           "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
-                          "Body": "{\"categories\":[\"RPA\",\"Follow up\"],\"isRead\":false}",
+                          "Body": "{\"categories\":[\"Follow up\"],\"isRead\":false}",
                           "ContentType": "application/json"
                         },
                         "host": {
@@ -263,7 +263,7 @@
                               "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Resolved_Current_OSS_Immutable_ID'))}",
                               "Method": "PATCH",
                               "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
-                              "Body": "{\"isRead\":false,\"categories\":[\"RPA\",\"Follow up\"]}",
+                              "Body": "{\"isRead\":false,\"categories\":[\"Follow up\"]}",
                               "ContentType": "application/json"
                             },
                             "host": {
@@ -395,7 +395,7 @@
                             "Uri": "v1.0/me/messages/@{encodeUriComponent(body('AWG_-_CON_-_01_NotConsolidation_HTTP_Move_Original_to_Client_Root')?['id'])}",
                             "Method": "PATCH",
                             "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
-                            "Body": "@concat('{\"isRead\":false,\"categories\":[\"RPA\",\"', outputs('Compose_ProcessType_From_Router_Response'), '\"]}')",
+                            "Body": "@concat('{\"isRead\":false,\"categories\":[\"', outputs('Compose_ProcessType_From_Router_Response'), '\"]}')",
                             "ContentType": "application/json"
                           },
                           "host": {

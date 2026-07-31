@@ -100,7 +100,7 @@
                         "Uri": "v1.0/me/messages/@{encodeUriComponent(triggerOutputs()?['body/id'])}",
                         "Method": "PATCH",
                         "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
-                        "Body": "{\"categories\":[\"RPA\",\"Wakefern detected\"]}",
+                        "Body": "{\"categories\":[\"Wakefern detected\"]}",
                         "ContentType": "application/json"
                       },
                       "host": {
@@ -207,7 +207,7 @@
                                     "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Original_Immutable_ID'))}",
                                     "Method": "PATCH",
                                     "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
-                                    "Body": "{\"isRead\":false,\"categories\":[\"RPA\",\"Duplicate\"]}",
+                                    "Body": "{\"isRead\":false,\"categories\":[\"Duplicate\"]}",
                                     "ContentType": "application/json"
                                   },
                                   "host": {
@@ -360,7 +360,7 @@
                                       "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Original_Immutable_ID'))}",
                                       "Method": "PATCH",
                                       "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
-                                      "Body": "{\"isRead\":true,\"categories\":[\"RPA\",\"Cristhofer Mar\u00edn\"]}",
+                                      "Body": "{\"isRead\":true,\"categories\":[\"Cristhofer Mar\u00edn\"]}",
                                       "ContentType": "application/json"
                                     },
                                     "host": {
@@ -496,7 +496,7 @@
                                           "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Original_Immutable_ID'))}",
                                           "Method": "PATCH",
                                           "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
-                                          "Body": "{\"isRead\":false,\"categories\":[\"RPA\",\"Cancellation\"]}",
+                                          "Body": "{\"isRead\":false,\"categories\":[\"Cancellation\"]}",
                                           "ContentType": "application/json"
                                         },
                                         "host": {

@@ -372,7 +372,7 @@
                   "Uri": "https://graph.microsoft.com/v1.0/users/pgcustservw2.im@pg.com/messages/@{encodeUriComponent(body('AWG_-_CON_-_04_Get_Immutable_ID')?['id'])}",
                   "Method": "PATCH",
                   "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
-                  "Body": "{\n  \"categories\": [\n    \"RPA\",\n    \"Follow up\",\n    \"Cristhofer Mar\u00edn\"\n  ]\n}",
+                  "Body": "{\n  \"categories\": [\n    \"Follow up\",\n    \"Cristhofer Mar\u00edn\"\n  ]\n}",
                   "ContentType": "application/json"
                 },
                 "host": {

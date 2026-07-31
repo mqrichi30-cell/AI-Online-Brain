@@ -482,7 +482,7 @@
                   "Uri": "https://graph.microsoft.com/v1.0/me/messages/@{triggerOutputs()?['body/id']}",
                   "Method": "PATCH",
                   "CustomHeader1": "Content-Type: application/json",
-                  "Body": "{\n  \"categories\": [\n    \"RPA\",\n    \"Follow Up\",\n    \"AWG OSSGenAI Processed\"\n  ]\n}",
+                  "Body": "{\n  \"categories\": [\n    \"Follow Up\",\n    \"AWG OSSGenAI Processed\"\n  ]\n}",
                   "ContentType": "application/json"
                 },
                 "host": {
