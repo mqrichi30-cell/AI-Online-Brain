@@ -100,7 +100,7 @@
                         "Uri": "v1.0/me/messages/@{encodeUriComponent(triggerOutputs()?['body/id'])}",
                         "Method": "PATCH",
                         "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
-                        "Body": "{\"categories\":[\"Wakefern detected\"]}",
+                        "Body": "@concat('{\"categories\":[\"', if(contains(toLower(outputs('GENERAL_-_00_Compose_Wakefern_Block_Text')), 'rpa email request to changes'), 'Wakefern detected', 'Blocked - system'), '\"]}')",
                         "ContentType": "application/json"
                       },
                       "host": {
@@ -573,12 +573,6 @@
                     {
                       "contains": [
                         "@toLower(outputs('GENERAL_-_00_Compose_Wakefern_Block_Text'))",
-                        "ossgenai.im@pg.com"
-                      ]
-                    },
-                    {
-                      "contains": [
-                        "@toLower(outputs('GENERAL_-_00_Compose_Wakefern_Block_Text'))",
                         "final state results"
                       ]
                     },
@@ -628,12 +622,6 @@
                       "contains": [
                         "@toLower(outputs('GENERAL_-_00_Compose_Wakefern_Block_Text'))",
                         "system-generated email"
-                      ]
-                    },
-                    {
-                      "contains": [
-                        "@toLower(outputs('GENERAL_-_00_Compose_Wakefern_Block_Text'))",
-                        "nacsoshared.im@pg.com"
                       ]
                     }
                   ]
