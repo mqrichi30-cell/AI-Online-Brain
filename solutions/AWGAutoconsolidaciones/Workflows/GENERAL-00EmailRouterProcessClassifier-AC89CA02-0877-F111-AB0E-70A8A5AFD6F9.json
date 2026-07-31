@@ -80,7 +80,7 @@
             "actions": {
               "GENERAL_-_00_Compose_Wakefern_Block_Text": {
                 "type": "Compose",
-                "inputs": "@concat('Subject=', coalesce(triggerOutputs()?['body/subject'], ''), ' | From=', string(triggerOutputs()?['body/from']), ' | Sender=', string(triggerOutputs()?['body/sender']), ' | To=', string(triggerOutputs()?['body/toRecipients']), ' | Cc=', string(triggerOutputs()?['body/ccRecipients']), ' | Bcc=', string(triggerOutputs()?['body/bccRecipients']), ' | BodyPreview=', coalesce(triggerOutputs()?['body/bodyPreview'], ''), ' | Body=', outputs('Compose_Email_Body'))"
+                "inputs": "@concat('Subject=', coalesce(triggerOutputs()?['body/subject'], ''), ' | From=', string(triggerOutputs()?['body/from']), ' | Sender=', string(triggerOutputs()?['body/sender']), ' | Message=', first(split(first(split(first(split(first(split(first(split(first(split(coalesce(triggerOutputs()?['body/body'], ''), 'FOR ROUTING USE WORKFLOW=')), '-----Original Message-----')), '________________________________')), 'From:')), 'Sent:')), ' wrote:')))"
               },
               "GENERAL_-_00_Guard_Block_Wakefern": {
                 "actions": {
