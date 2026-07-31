@@ -567,7 +567,7 @@
                     {
                       "contains": [
                         "@toLower(outputs('GENERAL_-_00_Compose_Wakefern_Block_Text'))",
-                        "wakefern"
+                        "rpa email request to changes"
                       ]
                     },
                     {
