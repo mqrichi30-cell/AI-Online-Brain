@@ -80,7 +80,7 @@
             "actions": {
               "GENERAL_-_00_Compose_Wakefern_Block_Text": {
                 "type": "Compose",
-                "inputs": "@concat('Subject=', coalesce(triggerOutputs()?['body/subject'], ''), ' | From=', string(triggerOutputs()?['body/from']), ' | Sender=', string(triggerOutputs()?['body/sender']), ' | Message=', first(split(first(split(first(split(first(split(first(split(first(split(coalesce(triggerOutputs()?['body/body'], ''), 'FOR ROUTING USE WORKFLOW=')), '-----Original Message-----')), '________________________________')), 'From:')), 'Sent:')), ' wrote:')))"
+                "inputs": "@concat('Subject=', coalesce(triggerOutputs()?['body/subject'], ''), ' | From=', string(triggerOutputs()?['body/from']), ' | Sender=', string(triggerOutputs()?['body/sender']), ' | Message=', first(split(first(split(first(split(first(split(first(split(first(split(last(split(coalesce(triggerOutputs()?['body/body'], ''), '<body')), 'FOR ROUTING USE WORKFLOW=')), '-----Original Message-----')), '________________________________')), 'From:')), 'Sent:')), ' wrote:')))"
               },
               "GENERAL_-_00_Guard_Block_Wakefern": {
                 "actions": {
@@ -378,7 +378,7 @@
                                     ]
                                   },
                                   "type": "Compose",
-                                  "inputs": "@first(split(first(split(first(split(first(split(first(split(first(split(coalesce(triggerOutputs()?['body/body'], ''), 'FOR ROUTING USE WORKFLOW=')), '-----Original Message-----')), '________________________________')), 'From:')), 'Sent:')), ' wrote:'))"
+                                  "inputs": "@first(split(first(split(first(split(first(split(first(split(first(split(last(split(coalesce(triggerOutputs()?['body/body'], ''), '<body')), 'FOR ROUTING USE WORKFLOW=')), '-----Original Message-----')), '________________________________')), 'From:')), 'Sent:')), ' wrote:'))"
                                 },
                                 "GENERAL_-_00_Rule_Scope": {
                                   "runAfter": {
