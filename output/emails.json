@@ -1,0 +1,23 @@
+{
+  "oss": {
+    "to": [
+      "ossgenai.im@pg.com"
+    ],
+    "cc": [],
+    "subject": "Wakefern RDD Change Request APPOINTMENT LATE - 2026-08-03",
+    "bodyHtml": "Hello,<br><br>Please apply this change:<br><br><table border=1 cellspacing=0 cellpadding=4><tr><th>SO #</th><th>Push GI to</th></tr><tr><td>2066923910</td><td>2026-08-05</td></tr><tr><td>2066923927</td><td>2026-08-05</td></tr><tr><td>2066923928</td><td>2026-08-05</td></tr><tr><td>2066923929</td><td>2026-08-05</td></tr><tr><td>2066923911</td><td>2026-08-05</td></tr><tr><td>2066923925</td><td>2026-08-05</td></tr><tr><td>2066923926</td><td>2026-08-05</td></tr></table><br><br>Regards,<br>pgcustservw2.im@pg.com<br>NA Order Management | Regional"
+  },
+  "customer": {
+    "to": [
+      "steve.salotti@wakefern.com",
+      "Mark.Kielczynski@wakefern.com",
+      "grocery_special_po_group@wakefern.com",
+      "anne.mucchiello@wakefern.com"
+    ],
+    "cc": [
+      "jackson.vs@pg.com"
+    ],
+    "subject": "APPOINTMENT NEEDED WAKEFERN",
+    "bodyHtml": "Hello team<br><br>These POs had been assigned with an appointment too late, so we need to push to the soonest RDD possible that is Thursday, August 6, 2026, could you please provide an appointment?<br><br><table border=1 cellspacing=0 cellpadding=4><tr><th>PO #</th><th>New RDD</th></tr><tr><td>01737647</td><td>2026-08-06</td></tr><tr><td>01737651</td><td>2026-08-06</td></tr><tr><td>01737653</td><td>2026-08-06</td></tr><tr><td>01737648</td><td>2026-08-06</td></tr><tr><td>01737654</td><td>2026-08-06</td></tr><tr><td>01737646</td><td>2026-08-06</td></tr><tr><td>01737652</td><td>2026-08-06</td></tr></table><br><br>Regards,<br>pgcustservw2.im@pg.com<br>NA Order Management | Regional"
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "schema": "1.0",
+  "details": {
+    "displayName": "Wakefern - 11s block - Autopush V15 WHOLESALE 2 ALERTS",
+    "description": "",
+    "createdTime": "2026-08-03T16:00:19.9949632Z",
+    "packageTelemetryId": "450f9e85-c2fd-49f2-97b4-bf5a2ad2b0b7",
+    "creator": "N/A",
+    "sourceEnvironment": ""
+  },
+  "resources": {
+    "6d2947b7-73a5-4d97-9cb2-0c991ffa6c32": {
+      "type": "Microsoft.Flow/flows",
+      "suggestedCreationType": "Update",
+      "creationType": "Existing, New, Update",
+      "details": {
+        "displayName": "Wakefern - 11s block - Autopush V15 WHOLESALE 2 ALERTS"
+      },
+      "configurableBy": "User",
+      "hierarchy": "Root",
+      "dependsOn": [
+        "d82fd43e-b153-4b0e-8f19-81e6abe7498e",
+        "9c204a41-0e3f-41dc-a267-9d1e994a24c8",
+        "584ecd4c-58bd-470a-a0fe-f2fbedf70e57",
+        "774a5e99-b086-4d38-98aa-b25354b3b37e",
+        "e9838b02-1ed8-45f6-9280-edd1945795b2",
+        "17ee1914-5c56-4a7f-8e13-146e61dff9a2"
+      ]
+    },
+    "d82fd43e-b153-4b0e-8f19-81e6abe7498e": {
+      "id": "/providers/Microsoft.PowerApps/apis/shared_office365",
+      "name": "shared_office365",
+      "type": "Microsoft.PowerApps/apis",
+      "suggestedCreationType": "Existing",
+      "details": {
+        "displayName": "Office\u00a0365 Outlook",
+        "iconUri": "https://static.powerapps.com/resource/ppcr/releases/v1.0.1819/1.0.1819.4795/office365/icon.png"
+      },
+      "configurableBy": "System",
+      "hierarchy": "Child",
+      "dependsOn": []
+    },
+    "9c204a41-0e3f-41dc-a267-9d1e994a24c8": {
+      "type": "Microsoft.PowerApps/apis/connections",
+      "suggestedCreationType": "Existing",
+      "creationType": "Existing",
+      "details": {
+        "displayName": "pgcustservw2.im@pg.com",
+        "iconUri": "https://static.powerapps.com/resource/ppcr/releases/v1.0.1819/1.0.1819.4795/office365/icon.png"
+      },
+      "configurableBy": "User",
+      "hierarchy": "Child",
+      "dependsOn": [
+        "d82fd43e-b153-4b0e-8f19-81e6abe7498e"
+      ]
+    },
+    "584ecd4c-58bd-470a-a0fe-f2fbedf70e57": {
+      "id": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
+      "name": "shared_onedriveforbusiness",
+      "type": "Microsoft.PowerApps/apis",
+      "suggestedCreationType": "Existing",
+      "details": {
+        "displayName": "OneDrive para la Empresa",
+        "iconUri": "https://static.powerapps.com/resource/ppcr/releases/v1.0.1814/1.0.1814.4751/onedriveforbusiness/icon.png"
+      },
+      "configurableBy": "System",
+      "hierarchy": "Child",
+      "dependsOn": []
+    },
+    "774a5e99-b086-4d38-98aa-b25354b3b37e": {
+      "type": "Microsoft.PowerApps/apis/connections",
+      "suggestedCreationType": "Existing",
+      "creationType": "Existing",
+      "details": {
+        "displayName": "marin.c@pg.com",
+        "iconUri": "https://static.powerapps.com/resource/ppcr/releases/v1.0.1814/1.0.1814.4751/onedriveforbusiness/icon.png"
+      },
+      "configurableBy": "User",
+      "hierarchy": "Child",
+      "dependsOn": [
+        "584ecd4c-58bd-470a-a0fe-f2fbedf70e57"
+      ]
+    },
+    "e9838b02-1ed8-45f6-9280-edd1945795b2": {
+      "id": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
+      "name": "shared_excelonlinebusiness",
+      "type": "Microsoft.PowerApps/apis",
+      "suggestedCreationType": "Existing",
+      "details": {
+        "displayName": "Excel Online (Empresas)",
+        "iconUri": "https://static.powerapps.com/resource/ppcr/releases/v1.0.1819/1.0.1819.4798/excelonlinebusiness/icon.png"
+      },
+      "configurableBy": "System",
+      "hierarchy": "Child",
+      "dependsOn": []
+    },
+    "17ee1914-5c56-4a7f-8e13-146e61dff9a2": {
+      "type": "Microsoft.PowerApps/apis/connections",
+      "suggestedCreationType": "Existing",
+      "creationType": "Existing",
+      "details": {
+        "displayName": "marin.c@pg.com",
+        "iconUri": "https://static.powerapps.com/resource/ppcr/releases/v1.0.1819/1.0.1819.4798/excelonlinebusiness/icon.png"
+      },
+      "configurableBy": "User",
+      "hierarchy": "Child",
+      "dependsOn": [
+        "e9838b02-1ed8-45f6-9280-edd1945795b2"
+      ]
+    }
+  }
+}

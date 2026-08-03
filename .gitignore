@@ -1,0 +1,10 @@
+# Reportes fuente y adjuntos: contienen datos de ordenes de clientes.
+# No se versionan.
+*.xlsx
+*.msg
+
+# Paquete generado por tools/build_flow_zip.py
+dist/
+
+__pycache__/
+*.pyc

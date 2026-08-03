@@ -1,0 +1,369 @@
+{
+    "name": "cc233734-22a3-4273-bda7-582d8bf84719",
+    "id": "/providers/Microsoft.Flow/flows/cc233734-22a3-4273-bda7-582d8bf84719",
+    "type": "Microsoft.Flow/flows",
+    "properties": {
+        "apiId": "/providers/Microsoft.PowerApps/apis/shared_logicflows",
+        "displayName": "Wakefern - 11s block - Autopush V15 WHOLESALE 2 ALERTS",
+        "definition": {
+            "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+            "contentVersion": "1.0.0.0",
+            "parameters": {
+                "$authentication": {
+                    "defaultValue": {},
+                    "type": "SecureObject"
+                },
+                "$connections": {
+                    "defaultValue": {},
+                    "type": "Object"
+                }
+            },
+            "triggers": {
+                "When_a_new_email_arrives_(V3)": {
+                    "splitOn": "@triggerOutputs()?['body/value']",
+                    "type": "OpenApiConnectionNotification",
+                    "inputs": {
+                        "parameters": {
+                            "from": "doom.im@pg.com;pgcustservw1.im@pg.com;pgcustservw2.im@pg.com",
+                            "includeAttachments": true,
+                            "subjectFilter": "Wholesale 2 Alerts Report",
+                            "fetchOnlyWithAttachment": true,
+                            "folderPath": "Inbox"
+                        },
+                        "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                            "connectionName": "shared_office365",
+                            "operationId": "OnNewEmailV3"
+                        },
+                        "authentication": "@parameters('$authentication')"
+                    }
+                }
+            },
+            "actions": {
+                "Only_Wholesale_2_Alerts_Subject": {
+                    "runAfter": {},
+                    "type": "If",
+                    "expression": {
+                        "and": [
+                            {
+                                "startsWith": [
+                                    "@triggerOutputs()?['body/subject']",
+                                    "Wholesale 2 Alerts Report"
+                                ]
+                            }
+                        ]
+                    },
+                    "actions": {
+                        "Filter_XLSX_Attachments": {
+                            "runAfter": {},
+                            "type": "Query",
+                            "inputs": {
+                                "from": "@coalesce(triggerOutputs()?['body/attachments'], json('[]'))",
+                                "where": "@and(endsWith(toLower(item()?['name']), '.xlsx'), equals(coalesce(item()?['isInline'], false), false))"
+                            },
+                            "description": "V15: coalesce evita que el Filter reviente si el trigger entrega attachments null."
+                        },
+                        "Apply_to_each_XLSX_Attachment": {
+                            "foreach": "@body('Filter_XLSX_Attachments')",
+                            "runAfter": {
+                                "Filter_XLSX_Attachments": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "Foreach",
+                            "runtimeConfiguration": {
+                                "concurrency": {
+                                    "repetitions": 1
+                                }
+                            },
+                            "actions": {
+                                "Create_Temp_Excel_File": {
+                                    "runAfter": {},
+                                    "type": "OpenApiConnection",
+                                    "inputs": {
+                                        "parameters": {
+                                            "folderPath": "/Wholesale2AlertsTemp",
+                                            "name": "@concat('Wholesale2_Alerts_Wakefern_11s_', formatDateTime(utcNow(), 'yyyyMMdd_HHmmssfff'), '.xlsx')",
+                                            "body": "@base64ToBinary(items('Apply_to_each_XLSX_Attachment')?['contentBytes'])"
+                                        },
+                                        "host": {
+                                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
+                                            "connectionName": "shared_onedriveforbusiness",
+                                            "operationId": "CreateFile"
+                                        },
+                                        "authentication": "@parameters('$authentication')"
+                                    },
+                                    "description": "V15: escribe en /Wholesale2AlertsTemp en vez de la raiz de OneDrive, para no ensuciar la raiz."
+                                },
+                                "Run_script_ProcessWakefern11s": {
+                                    "runAfter": {
+                                        "Create_Temp_Excel_File": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "type": "OpenApiConnection",
+                                    "inputs": {
+                                        "parameters": {
+                                            "source": "me",
+                                            "drive": "me",
+                                            "file": "@outputs('Create_Temp_Excel_File')?['body/Id']",
+                                            "scriptId": "ms-officescript%3A%2F%2Fonedrive_business_itemlink%2F01DYYVZGXRHHDY4HR32VGID4O5BXO2MOKB"
+                                        },
+                                        "host": {
+                                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
+                                            "connectionName": "shared_excelonlinebusiness",
+                                            "operationId": "RunScriptProd"
+                                        },
+                                        "authentication": "@parameters('$authentication')"
+                                    },
+                                    "runtimeConfiguration": {
+                                        "retryPolicy": {
+                                            "type": "exponential",
+                                            "count": 4,
+                                            "interval": "PT10S"
+                                        }
+                                    },
+                                    "description": "Ejecuta ProcessWakefern11s_AUTOPUSH sobre el Excel temporal. IMPORTANTE: scriptId apunta al OneDrive del autor original; al importar hay que volver a seleccionar el script desde el desplegable. V15 agrega retry por el bloqueo transitorio del archivo recien creado."
+                                },
+                                "Parse_Script_Result": {
+                                    "runAfter": {
+                                        "Run_script_ProcessWakefern11s": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "type": "ParseJson",
+                                    "inputs": {
+                                        "content": "@body('Run_script_ProcessWakefern11s')?['result']",
+                                        "schema": {
+                                            "type": "object",
+                                            "properties": {
+                                                "rowCount": {
+                                                    "type": "integer"
+                                                },
+                                                "ossHtmlRows": {
+                                                    "type": "string"
+                                                },
+                                                "clientHtmlRows": {
+                                                    "type": "string"
+                                                },
+                                                "clientSentenceDate": {
+                                                    "type": "string"
+                                                },
+                                                "todayIso": {
+                                                    "type": "string"
+                                                },
+                                                "tomorrowIso": {
+                                                    "type": "string"
+                                                },
+                                                "pushGiIso": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "rowCount",
+                                                "ossHtmlRows",
+                                                "clientHtmlRows",
+                                                "clientSentenceDate",
+                                                "todayIso",
+                                                "tomorrowIso",
+                                                "pushGiIso"
+                                            ]
+                                        }
+                                    },
+                                    "description": "V15: lee directo body(...)?['result']. Se elimino el Compose intermedio que solo agregaba un punto de falla."
+                                },
+                                "Debug_Parsed_Script_Result": {
+                                    "runAfter": {
+                                        "Parse_Script_Result": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "type": "Compose",
+                                    "inputs": "@body('Parse_Script_Result')",
+                                    "description": "DEBUG: abrir esta accion primero. Confirma rowCount, fechas y filas HTML generadas."
+                                },
+                                "If_Rows_Found": {
+                                    "runAfter": {
+                                        "Debug_Parsed_Script_Result": [
+                                            "Succeeded"
+                                        ]
+                                    },
+                                    "type": "If",
+                                    "expression": {
+                                        "and": [
+                                            {
+                                                "greater": [
+                                                    "@int(body('Parse_Script_Result')?['rowCount'])",
+                                                    0
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    "actions": {
+                                        "Send_OSS_Email": {
+                                            "runAfter": {},
+                                            "type": "OpenApiConnection",
+                                            "inputs": {
+                                                "parameters": {
+                                                    "emailMessage/To": "ossgenai.im@pg.com",
+                                                    "emailMessage/Subject": "@concat('Wakefern RDD Change Request APPOINTMENT LATE - ', body('Parse_Script_Result')?['todayIso'])",
+                                                    "emailMessage/Body": "@concat('Hello,<br><br>Please apply this change:<br><br><table border=1 cellspacing=0 cellpadding=4><tr><th>SO #</th><th>Push GI to</th></tr>', body('Parse_Script_Result')?['ossHtmlRows'], '</table><br><br>Regards,<br>pgcustservw2.im@pg.com<br>NA Order Management | Regional')",
+                                                    "emailMessage/Importance": "Normal"
+                                                },
+                                                "host": {
+                                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                                    "connectionName": "shared_office365",
+                                                    "operationId": "SendEmailV2"
+                                                },
+                                                "authentication": "@parameters('$authentication')"
+                                            },
+                                            "description": "V15 CORRECCION PRINCIPAL: reemplaza Create_OSS_Draft_HTTP + Send_OSS_Draft_HTTP. El conector Office 365 Outlook 'Send an HTTP request' espera un URI RELATIVO de Graph; el flow V14 enviaba https://graph.microsoft.com/v1.0/me/messages (absoluto) y el conector le anteponia su propia base, produciendo un 400/404. Send an email (V2) no usa Graph ni JSON armado a mano."
+                                        },
+                                        "Send_Customer_Email": {
+                                            "runAfter": {
+                                                "Send_OSS_Email": [
+                                                    "Succeeded"
+                                                ]
+                                            },
+                                            "type": "OpenApiConnection",
+                                            "inputs": {
+                                                "parameters": {
+                                                    "emailMessage/To": "steve.salotti@wakefern.com;Mark.Kielczynski@wakefern.com;grocery_special_po_group@wakefern.com;anne.mucchiello@wakefern.com",
+                                                    "emailMessage/Cc": "jackson.vs@pg.com",
+                                                    "emailMessage/Subject": "APPOINTMENT NEEDED WAKEFERN",
+                                                    "emailMessage/Body": "@concat('Hello team<br><br>These POs had been assigned with an appointment too late, so we need to push to the soonest RDD possible that is ', body('Parse_Script_Result')?['clientSentenceDate'], ', could you please provide an appointment?<br><br><table border=1 cellspacing=0 cellpadding=4><tr><th>PO #</th><th>New RDD</th></tr>', body('Parse_Script_Result')?['clientHtmlRows'], '</table><br><br>Regards,<br>pgcustservw2.im@pg.com<br>NA Order Management | Regional')",
+                                                    "emailMessage/Importance": "Normal"
+                                                },
+                                                "host": {
+                                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                                    "connectionName": "shared_office365",
+                                                    "operationId": "SendEmailV2"
+                                                },
+                                                "authentication": "@parameters('$authentication')"
+                                            },
+                                            "description": "ATENCION: destinatarios de PRODUCCION (externos, Wakefern). Para probar, cambiar emailMessage/To por su propio correo antes de activar el flow."
+                                        }
+                                    },
+                                    "else": {
+                                        "actions": {
+                                            "No_Matching_Rows": {
+                                                "runAfter": {},
+                                                "type": "Compose",
+                                                "inputs": "@concat('Sin filas Wakefern DB 11 con Good Issue ', body('Parse_Script_Result')?['todayIso'], ' o ', body('Parse_Script_Result')?['tomorrowIso'], ' en el reporte Wholesale 2 Alerts.')"
+                                            }
+                                        }
+                                    }
+                                },
+                                "Delete_Temp_Excel_File": {
+                                    "runAfter": {
+                                        "If_Rows_Found": [
+                                            "Succeeded",
+                                            "Failed",
+                                            "Skipped",
+                                            "TimedOut"
+                                        ]
+                                    },
+                                    "type": "OpenApiConnection",
+                                    "inputs": {
+                                        "parameters": {
+                                            "id": "@outputs('Create_Temp_Excel_File')?['body/Id']"
+                                        },
+                                        "host": {
+                                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
+                                            "connectionName": "shared_onedriveforbusiness",
+                                            "operationId": "DeleteFile"
+                                        },
+                                        "authentication": "@parameters('$authentication')"
+                                    },
+                                    "description": "V15: limpia el Excel temporal. El V14 nunca borraba nada y llenaba la raiz de OneDrive."
+                                }
+                            }
+                        },
+                        "Move_email_(V2)": {
+                            "runAfter": {
+                                "Apply_to_each_XLSX_Attachment": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "metadata": {
+                                "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAAkMoe0AAA=": "Misc Folder"
+                            },
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                                "parameters": {
+                                    "messageId": "@triggerOutputs()?['body/id']",
+                                    "folderPath": "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAAkMoe0AAA="
+                                },
+                                "host": {
+                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                    "connectionName": "shared_office365",
+                                    "operationId": "MoveV2"
+                                },
+                                "authentication": "@parameters('$authentication')"
+                            },
+                            "description": "V15: se saco del Foreach. En el V14 estaba dentro, asi que con dos adjuntos .xlsx el segundo Move fallaba porque el mensaje ya se habia movido."
+                        },
+                        "Mark_as_read_or_unread_(V3)": {
+                            "runAfter": {
+                                "Move_email_(V2)": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                                "parameters": {
+                                    "messageId": "@triggerOutputs()?['body/id']",
+                                    "body/isRead": true
+                                },
+                                "host": {
+                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                    "connectionName": "shared_office365",
+                                    "operationId": "MarkAsRead_V3"
+                                },
+                                "authentication": "@parameters('$authentication')"
+                            }
+                        }
+                    },
+                    "else": {
+                        "actions": {
+                            "Ignored_Not_Wholesale_2_Alerts": {
+                                "runAfter": {},
+                                "type": "Compose",
+                                "inputs": "Ignorado: el asunto no empieza con 'Wholesale 2 Alerts Report'."
+                            }
+                        }
+                    }
+                }
+            },
+            "outputs": {}
+        },
+        "connectionReferences": {
+            "shared_office365": {
+                "connectionName": "shared-office365-89c9854a-cfbd-48e5-acd3-cb019798a1ee",
+                "source": "Embedded",
+                "id": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                "tier": "NotSpecified",
+                "apiName": "office365",
+                "isProcessSimpleApiReferenceConversionAlreadyDone": false
+            },
+            "shared_onedriveforbusiness": {
+                "connectionName": "shared-onedriveforbu-eaa3bce2-c58e-4fa1-81d0-d78a9fb4ad93",
+                "source": "Embedded",
+                "id": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
+                "tier": "NotSpecified",
+                "apiName": "onedriveforbusiness",
+                "isProcessSimpleApiReferenceConversionAlreadyDone": false
+            },
+            "shared_excelonlinebusiness": {
+                "connectionName": "shared-excelonlinebu-03886d99-1d8e-4b5b-95ce-105a8b6ca4eb",
+                "source": "Embedded",
+                "id": "/providers/Microsoft.PowerApps/apis/shared_excelonlinebusiness",
+                "tier": "NotSpecified",
+                "apiName": "excelonlinebusiness",
+                "isProcessSimpleApiReferenceConversionAlreadyDone": false
+            }
+        },
+        "flowFailureAlertSubscribed": false,
+        "isManaged": false
+    }
+}
