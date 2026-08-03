@@ -53,7 +53,7 @@
           },
           "conditions": [
             {
-              "expression": "@and(not(contains(toLower(string(coalesce(triggerOutputs()?['body/from'],''))),'ossgenai.im@pg.com')),not(contains(toLower(string(coalesce(triggerOutputs()?['body/from'],''))),'nacsoshared.im@pg.com')),not(contains(toLower(coalesce(triggerOutputs()?['body/subject'],'')),'awg-flow-id:')),not(contains(toLower(coalesce(triggerOutputs()?['body/subject'],'')),'awg-step:')),not(contains(toLower(string(coalesce(triggerOutputs()?['body/categories'],''))),'no match')))"
+              "expression": "@and(not(contains(toLower(string(coalesce(triggerOutputs()?['body/from'],''))),'ossgenai.im@pg.com')),not(contains(toLower(string(coalesce(triggerOutputs()?['body/from'],''))),'nacsoshared.im@pg.com')),not(contains(toLower(coalesce(triggerOutputs()?['body/subject'],'')),'awg-flow-id:')),not(contains(toLower(coalesce(triggerOutputs()?['body/subject'],'')),'awg-step:')),not(contains(toLower(string(coalesce(triggerOutputs()?['body/categories'],''))),'no match')),not(contains(toLower(string(coalesce(triggerOutputs()?['body/from'],''))),'doom.im@pg.com')))"
             }
           ],
           "runtimeConfiguration": {
