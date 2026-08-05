@@ -250,9 +250,9 @@
                                       "item/OriginalMessageId": "@outputs('Compose_Original_Immutable_ID')",
                                       "item/OriginalConversationId": "@outputs('Compose_Original_Conversation_ID')",
                                       "item/OriginalSubject": "@triggerOutputs()?['body/subject']",
-                                      "item/Status": "@if(equals(outputs('GENERAL_-_00_Rule_Classification'), 'Consolidation'), 'Consolidation', if(equals(outputs('GENERAL_-_00_Rule_Classification'), 'Cancellation'), 'Cancellation', 'Flow0-PromptSentToIA'))",
+                                      "item/Status": "@if(equals(outputs('GENERAL_-_00_Rule_Classification'), 'Consolidation'), 'Consolidation', if(equals(outputs('GENERAL_-_00_Rule_Classification'), 'Cancellation'), 'Cancellation', if(equals(outputs('GENERAL_-_00_Rule_Classification'), 'Return'), 'Return', 'Flow0-PromptSentToIA')))",
                                       "item/FlowId": "@outputs('Compose_FlowId')",
-                                      "item/Phase": "@if(equals(outputs('GENERAL_-_00_Rule_Classification'), 'Consolidation'), '01-IntakeSent', if(equals(outputs('GENERAL_-_00_Rule_Classification'), 'Cancellation'), '00-RuleCancellation', '00-RouterSent'))",
+                                      "item/Phase": "@if(equals(outputs('GENERAL_-_00_Rule_Classification'), 'Consolidation'), '01-IntakeSent', if(equals(outputs('GENERAL_-_00_Rule_Classification'), 'Cancellation'), '00-RuleCancellation', if(equals(outputs('GENERAL_-_00_Rule_Classification'), 'Return'), '00-RuleReturn', '00-RouterSent')))",
                                       "item/PhaseSince": "@utcNow()"
                                     },
                                     "host": {
@@ -450,7 +450,7 @@
                                     ]
                                   },
                                   "type": "Compose",
-                                  "inputs": "@if(outputs('GENERAL_-_00_Rule_Blocked'), 'No Match', if(outputs('GENERAL_-_00_Rule_Inquiry'), 'No Match', if(outputs('GENERAL_-_00_Rule_Negation'), 'No Match', if(outputs('GENERAL_-_00_Rule_Cancellation'), 'Cancellation', if(outputs('GENERAL_-_00_Rule_Consolidation'), 'Consolidation', 'No Match')))))"
+                                  "inputs": "@if(outputs('GENERAL_-_00_Rule_Blocked'), 'No Match', if(contains(outputs('GENERAL_-_00_Rule_Sender'), 'traffic_osdclaims1@awginc.com'), 'Return', if(outputs('GENERAL_-_00_Rule_Inquiry'), 'No Match', if(outputs('GENERAL_-_00_Rule_Negation'), 'No Match', if(outputs('GENERAL_-_00_Rule_Cancellation'), 'Cancellation', if(outputs('GENERAL_-_00_Rule_Consolidation'), 'Consolidation', 'No Match'))))))"
                                 },
                                 "GENERAL_-_00_DEBUG_Rule_Result": {
                                   "runAfter": {
@@ -478,11 +478,17 @@
                                   },
                                   "type": "If",
                                   "expression": {
-                                    "and": [
+                                    "or": [
                                       {
                                         "equals": [
                                           "@outputs('GENERAL_-_00_Rule_Classification')",
                                           "Cancellation"
+                                        ]
+                                      },
+                                      {
+                                        "equals": [
+                                          "@outputs('GENERAL_-_00_Rule_Classification')",
+                                          "Return"
                                         ]
                                       }
                                     ]
@@ -496,7 +502,7 @@
                                           "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Original_Immutable_ID'))}",
                                           "Method": "PATCH",
                                           "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
-                                          "Body": "{\"isRead\":false,\"categories\":[\"Cancellation\"]}",
+                                          "Body": "@concat('{\"isRead\":false,\"categories\":[\"', outputs('GENERAL_-_00_Rule_Classification'), '\"]}')",
                                           "ContentType": "application/json"
                                         },
                                         "host": {
