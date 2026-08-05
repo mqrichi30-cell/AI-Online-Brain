@@ -230,7 +230,7 @@
                                   "type": "Compose",
                                   "inputs": "@guid()",
                                   "runAfter": {
-                                    "GENERAL_-_00_DEBUG_Rule_Result": [
+                                    "GENERAL_-_00_HTTP_Patch_Original_Read_Tags": [
                                       "Succeeded"
                                     ]
                                   }
@@ -353,14 +353,18 @@
                                   }
                                 },
                                 "GENERAL_-_00_HTTP_Patch_Original_Read_Tags": {
-                                  "runAfter": {},
+                                  "runAfter": {
+                                    "GENERAL_-_00_DEBUG_Rule_Result": [
+                                      "Succeeded"
+                                    ]
+                                  },
                                   "type": "OpenApiConnection",
                                   "inputs": {
                                     "parameters": {
                                       "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Original_Immutable_ID'))}",
                                       "Method": "PATCH",
                                       "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
-                                      "Body": "{\"isRead\":true,\"categories\":[\"Cristhofer Mar\u00edn\"]}",
+                                      "Body": "@concat('{\"isRead\":true,\"categories\":[\"Cristhofer Mar\u00edn\",\"', outputs('GENERAL_-_00_Rule_Classification'), '\"]}')",
                                       "ContentType": "application/json"
                                     },
                                     "host": {
@@ -372,11 +376,7 @@
                                   }
                                 },
                                 "GENERAL_-_00_Rule_Client_Message": {
-                                  "runAfter": {
-                                    "GENERAL_-_00_HTTP_Patch_Original_Read_Tags": [
-                                      "Succeeded"
-                                    ]
-                                  },
+                                  "runAfter": {},
                                   "type": "Compose",
                                   "inputs": "@first(split(first(split(first(split(first(split(first(split(first(split(last(split(coalesce(triggerOutputs()?['body/body'], ''), '<body')), 'FOR ROUTING USE WORKFLOW=')), '-----Original Message-----')), '________________________________')), 'From:')), 'Sent:')), ' wrote:'))"
                                 },
