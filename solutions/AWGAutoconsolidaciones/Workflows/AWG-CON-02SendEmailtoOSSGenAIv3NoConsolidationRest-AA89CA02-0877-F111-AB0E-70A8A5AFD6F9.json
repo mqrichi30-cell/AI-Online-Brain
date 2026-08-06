@@ -216,7 +216,7 @@
                         ]
                       },
                       "type": "Compose",
-                      "inputs": "@first(body('AWG_-_CON_-_02_Get_Tracking_Item')?['value'])?['OriginalMessageId']"
+                      "inputs": "@triggerOutputs()?['body/id']"
                     },
                     "AWG_-_CON_-_02_HTTP_Create_Threaded_Reply_Draft_By_Original_Immutable_ID": {
                       "runAfter": {
