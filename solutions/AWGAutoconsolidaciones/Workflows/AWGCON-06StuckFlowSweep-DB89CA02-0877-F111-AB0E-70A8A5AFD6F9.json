@@ -113,7 +113,7 @@
             "parameters": {
               "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
               "table": "70ed8abc-c524-4142-9d8a-86f70ced426c",
-              "$filter": "Phase ne '06-Consolidated' and Phase ne '99-ManualReview' and Phase ne '00-RuleCancellation' and Phase ne '00-RuleReturn' and Phase ne '00-RuleZQ' and PhaseSince lt '@{outputs('Compose_Cutoff_5h')}'",
+              "$filter": "(Phase eq '00-RouterClassified' or Phase eq '01-IntakeSent' or Phase eq '02-ConsolTableRcvd' or Phase eq '03-RDDRequestSent' or Phase eq '05-FullTableRequestSent') and PhaseSince lt '@{outputs('Compose_Cutoff_5h')}'",
               "$top": 100
             },
             "host": {
@@ -133,7 +133,7 @@
               "inputs": {
                 "parameters": {
                   "emailMessage/To": "pgcustservw2.im@pg.com",
-                  "emailMessage/Subject": "@concat('[AWG CON] Flujo de consolidacion atascado (+5h) - Fase ', item()?['Phase'])",
+                  "emailMessage/Subject": "@concat('[AWG CON] Flujo de consolidacion atascado (+5h) - Fase ', coalesce(item()?['Phase'],''), ' - PO ', coalesce(item()?['POs'],'sin PO'), ' - ', coalesce(item()?['OriginalSubject'],''))",
                   "emailMessage/Body": "<p>Un flujo de consolidacion lleva mas de 5 horas sin avanzar y se movera a revision manual.</p><p><strong>FlowId:</strong> @{item()?['FlowId']}<br><strong>Fase actual:</strong> @{item()?['Phase']}<br><strong>Sin avanzar desde:</strong> @{item()?['PhaseSince']}<br><strong>POs:</strong> @{item()?['POs']}<br><strong>Asunto original:</strong> @{item()?['OriginalSubject']}<br><strong>OriginalConversationId:</strong> @{item()?['OriginalConversationId']}</p><p>Esta fila se marco como <strong>99-ManualReview</strong>. Revisar manualmente.</p>",
                   "emailMessage/Importance": "Normal"
                 },
