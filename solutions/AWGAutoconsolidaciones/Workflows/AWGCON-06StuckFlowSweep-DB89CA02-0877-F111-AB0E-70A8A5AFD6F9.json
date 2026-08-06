@@ -113,7 +113,7 @@
             "parameters": {
               "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
               "table": "70ed8abc-c524-4142-9d8a-86f70ced426c",
-              "$filter": "Phase ne '06-Consolidated' and Phase ne '99-ManualReview' and PhaseSince lt '@{outputs('Compose_Cutoff_5h')}'",
+              "$filter": "Phase ne '06-Consolidated' and Phase ne '99-ManualReview' and Phase ne '00-RuleCancellation' and Phase ne '00-RuleReturn' and Phase ne '00-RuleZQ' and PhaseSince lt '@{outputs('Compose_Cutoff_5h')}'",
               "$top": 100
             },
             "host": {
