@@ -37,7 +37,7 @@
         "When_a_new_email_arrives_(V3)": {
           "splitOn": "@triggerOutputs()?['body/value']",
           "metadata": {
-            "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAYFina4AAA=": "Mar\u00edn, Cristhofer - AWG + Wakefern"
+            "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAYFina4AAA=": "Marín, Cristhofer - AWG + Wakefern"
           },
           "type": "OpenApiConnectionNotification",
           "inputs": {
@@ -163,7 +163,7 @@
                     },
                     "AWG_-_CON_-_02_Advance_Phase": {
                       "runAfter": {
-                        "AWG_-_CON_-_02_Compose_Reply_HTML": [
+                        "AWG_-_CON_-_02_HTTP_Send_Threaded_Reply_Draft": [
                           "Succeeded"
                         ]
                       },
@@ -189,7 +189,7 @@
                     },
                     "AWG_-_CON_-_02_Get_Current_Immutable_ID": {
                       "runAfter": {
-                        "AWG_-_CON_-_02_HTTP_Send_Threaded_Reply_Draft": [
+                        "AWG_-_CON_-_02_Advance_Phase": [
                           "Succeeded"
                         ]
                       },
@@ -211,7 +211,7 @@
                     },
                     "AWG_-_CON_-_02_Compose_Original_Immutable_ID_For_Reply": {
                       "runAfter": {
-                        "AWG_-_CON_-_02_Advance_Phase": [
+                        "AWG_-_CON_-_02_Compose_Reply_HTML": [
                           "Succeeded"
                         ]
                       },

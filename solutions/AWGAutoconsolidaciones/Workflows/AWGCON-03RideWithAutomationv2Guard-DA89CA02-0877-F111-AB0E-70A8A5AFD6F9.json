@@ -63,7 +63,7 @@
           },
           "splitOn": "@triggerOutputs()?['body/value']",
           "metadata": {
-            "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAYFina4AAA=": "Mar\u00edn, Cristhofer - AWG + Wakefern"
+            "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAYFina4AAA=": "Marín, Cristhofer - AWG + Wakefern"
           },
           "type": "OpenApiConnection",
           "inputs": {
@@ -579,7 +579,7 @@
           "expression": {
             "and": [
               {
-                "equals": [
+                "greater": [
                   "@length(body('AWG_-_CON_-_03_Filter_Tracking_Item'))",
                   0
                 ]
