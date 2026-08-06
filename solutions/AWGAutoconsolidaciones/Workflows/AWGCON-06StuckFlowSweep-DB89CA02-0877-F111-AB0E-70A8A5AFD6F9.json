@@ -113,7 +113,7 @@
             "parameters": {
               "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
               "table": "70ed8abc-c524-4142-9d8a-86f70ced426c",
-              "$filter": "(Phase eq '00-RouterClassified' or Phase eq '01-IntakeSent' or Phase eq '02-ConsolTableRcvd' or Phase eq '03-RDDRequestSent' or Phase eq '05-FullTableRequestSent') and PhaseSince lt '@{outputs('Compose_Cutoff_5h')}'",
+              "$filter": "(Phase eq '00-RouterClassified' or Phase eq '01-IntakeSent' or Phase eq '02-ConsolTableRcvd' or Phase eq '03-RDDRequestSent' or Phase eq '05-FullTableRequestSent') and Status ne 'Pending 10 Days Out' and PhaseSince lt '@{outputs('Compose_Cutoff_5h')}'",
               "$top": 100
             },
             "host": {
