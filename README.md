@@ -58,6 +58,33 @@ los 15 días. Con el filtro y `$top=999` son solo las páginas del rango pedido.
   `"Marín, Cristhofer - AWG + Wakefern"` no falle por un espacio de más.
 - El CSV se escribe en UTF-8 con BOM para que Excel muestre bien los acentos.
 
+## scripts/Export-And-PivotByHour.ps1
+
+Hace los dos pasos anteriores de una sola vez: exporta los correos de los **últimos 6
+meses** y arma el Excel con la tabla dinámica de correos por hora, sin pasar por
+`Alt+F11`.
+
+```powershell
+.\scripts\Export-And-PivotByHour.ps1              # 6 meses
+.\scripts\Export-And-PivotByHour.ps1 -Months 12
+.\scripts\Export-And-PivotByHour.ps1 -SkipExcel   # solo el CSV
+```
+
+Genera `CorreosUltimos6Meses.csv` y `CorreosUltimos6Meses.xlsx` en Descargas, y abre el
+Excel al terminar.
+
+Diferencia importante con la macro VBA: **la hora se calcula en PowerShell** a partir del
+`DateTime` real que devuelve Graph, no parseando texto en Excel. No depende del formato
+regional ni de cómo Excel interprete la columna `Received`. El CSV ya sale con las
+columnas `Hora`, `Rango horario`, `Fecha` y `DiaSemana` listas.
+
+Antes de tocar Excel imprime el histograma por hora en la consola, así el resultado está
+disponible aunque la automatización COM falle. Si Excel no está o la automatización se
+rompe, avisa y deja el CSV igual en lugar de perder la corrida.
+
+`Export-And-PivotByHour-OneLiner.ps1` es el mismo flujo condensado en un bloque plano,
+pensado para pegar directamente en la consola de PowerShell sin guardar archivo.
+
 ## scripts/PivotCorreosPorHora.bas
 
 Macro de Excel (VBA) que toma el CSV generado por el script anterior y arma una tabla
