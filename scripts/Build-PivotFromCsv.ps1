@@ -21,11 +21,28 @@
         controlado a carpetas de Windows Defender), reintenta en el Escritorio
         y luego en TEMP antes de rendirse.
 
+    POR QUE NO GUARDA SOLO POR DEFECTO
+    ----------------------------------
+    En entornos con etiquetas de confidencialidad obligatorias (Microsoft
+    Purview / Azure Information Protection), Excel abre un dialogo modal al
+    guardar un archivo nuevo. Desde automatizacion eso produce dos fallos
+    igual de malos:
+
+      * Con DisplayAlerts = $false, Excel contesta el dialogo solo, CANCELA
+        el guardado y no lanza error: exito reportado sin archivo.
+      * Con DisplayAlerts = $true, el dialogo se muestra y SaveAs queda
+        bloqueado indefinidamente esperando a una persona.
+
+    Por eso el comportamiento por defecto es construir la dinamica y dejar
+    Excel abierto para guardar a mano con Ctrl+S, que es cuando el dialogo de
+    etiqueta se puede contestar sin colgar nada. Usa -Save solo si sabes que
+    tu entorno no exige etiqueta.
+
 .EXAMPLE
     .\Build-PivotFromCsv.ps1
 
 .EXAMPLE
-    .\Build-PivotFromCsv.ps1 -CsvPath "C:\Users\marin.c\Downloads\CorreosUltimos6Meses.csv"
+    .\Build-PivotFromCsv.ps1 -CsvPath "C:\Users\marin.c\Downloads\CorreosUltimos6Meses.csv" -Save
 #>
 
 [CmdletBinding()]
@@ -33,6 +50,7 @@ param(
     [string] $CsvPath  = "$env:USERPROFILE\Downloads\CorreosUltimos6Meses.csv",
     [string] $XlsxPath = "",
     [string] $Titulo   = "Correos por hora del dia (24h)",
+    [switch] $Save,
     [switch] $Invisible
 )
 
@@ -119,6 +137,23 @@ try {
 
     $wsP.Columns("A:Z").AutoFit() | Out-Null
     $wsP.Activate()
+
+    if (-not $Save) {
+        # Sin -Save no se toca SaveAs: es la unica forma de no quedar colgado
+        # esperando el dialogo de etiqueta de confidencialidad.
+        $xl.DisplayAlerts = $true
+        $xl.Visible = $true
+        try { $xl.WindowState = -4137 } catch { }   # -4137 = xlMaximized
+        Write-Host ""
+        Write-Host "Dinamica lista en Excel." -ForegroundColor Green
+        Write-Host "Guardala con Ctrl+S (Excel > Guardar como > .xlsx)." -ForegroundColor Green
+        Write-Host "Sugerencia de destino: $XlsxPath"
+        Write-Host ""
+        Write-Host "Se deja sin guardar a proposito: si tu organizacion exige etiqueta de"
+        Write-Host "confidencialidad, guardar desde el script cuelga o cancela en silencio."
+        Write-Host "Si tu entorno no la exige, volve a correr con -Save."
+        return
+    }
 
     Write-Host "[6/6] Guardando..." -ForegroundColor Cyan
     # A partir de aca los avisos SI se muestran: un SaveAs silenciado es

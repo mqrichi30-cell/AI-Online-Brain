@@ -85,6 +85,42 @@ rompe, avisa y deja el CSV igual en lugar de perder la corrida.
 `Export-And-PivotByHour-OneLiner.ps1` es el mismo flujo condensado en un bloque plano,
 pensado para pegar directamente en la consola de PowerShell sin guardar archivo.
 
+## scripts/Get-HourlyBreakdown.ps1
+
+Desglose de correos por hora **sin abrir Excel**. Alternativa a la tabla dinámica cuando
+Excel bloquea el guardado.
+
+```powershell
+.\scripts\Get-HourlyBreakdown.ps1
+.\scripts\Get-HourlyBreakdown.ps1 -PorDiaSemana
+```
+
+Imprime la tabla con histograma en consola y escribe un CSV **ya cruzado** (una fila por
+franja horaria, una columna por carpeta, más `Total` y `Porcentaje`, con fila de totales).
+Ese CSV es el resultado final: no hace falta armar ninguna dinámica encima. Con
+`-PorDiaSemana` agrega el cruce hora × día de la semana.
+
+Deriva la hora de la columna `Hora` si está, y si no la calcula desde `Received`. Las filas
+sin hora reconocible se cuentan y se reportan, no se descartan en silencio.
+
+## Etiquetas de confidencialidad y el guardado desde Excel
+
+En entornos con etiquetado obligatorio (Microsoft Purview / Azure Information Protection),
+Excel abre un diálogo modal al guardar un archivo nuevo. Desde automatización eso da dos
+fallos, ambos malos:
+
+- Con `DisplayAlerts = $false`, Excel contesta el diálogo solo, **cancela el guardado y no
+  lanza error**: el script reporta éxito y no hay archivo.
+- Con `DisplayAlerts = $true`, el diálogo se muestra y `SaveAs` **queda bloqueado
+  indefinidamente** esperando a una persona.
+
+Por eso `Build-PivotFromCsv.ps1` construye la dinámica y **deja Excel abierto sin guardar**:
+el `Ctrl+S` manual es el momento en que ese diálogo se puede contestar sin colgar nada. El
+modificador `-Save` fuerza el guardado automático, solo para entornos sin etiqueta
+obligatoria.
+
+Si no querés lidiar con Excel, `Get-HourlyBreakdown.ps1` da el mismo resultado en CSV.
+
 ## scripts/PivotCorreosPorHora.bas
 
 Macro de Excel (VBA) que toma el CSV generado por el script anterior y arma una tabla
