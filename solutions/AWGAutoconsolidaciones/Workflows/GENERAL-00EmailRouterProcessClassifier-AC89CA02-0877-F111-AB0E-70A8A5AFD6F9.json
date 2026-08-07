@@ -405,7 +405,7 @@
                                     ]
                                   },
                                   "type": "Compose",
-                                  "inputs": "@or(contains(outputs('GENERAL_-_00_Rule_Sender'), 'cpusched.im@pg.com'),contains(outputs('GENERAL_-_00_Rule_Sender'), 'execution.im@pg.com'))"
+                                  "inputs": "@or(contains(outputs('GENERAL_-_00_Rule_Sender'), 'cpusched.im@pg.com'),contains(outputs('GENERAL_-_00_Rule_Sender'), 'execution.im@pg.com'),startsWith(toLower(coalesce(triggerOutputs()?['body/subject'],'')), 'automatic reply:'),startsWith(toLower(coalesce(triggerOutputs()?['body/subject'],'')), 'automatic reply :'),startsWith(toLower(coalesce(triggerOutputs()?['body/subject'],'')), 'out of office'),startsWith(toLower(coalesce(triggerOutputs()?['body/subject'],'')), 'respuesta automatica'),startsWith(toLower(coalesce(triggerOutputs()?['body/subject'],'')), 'undeliverable:'),contains(toLower(coalesce(triggerOutputs()?['body/subject'],'')), 'delivery status notification'))"
                                 },
                                 "GENERAL_-_00_Rule_Inquiry": {
                                   "runAfter": {
