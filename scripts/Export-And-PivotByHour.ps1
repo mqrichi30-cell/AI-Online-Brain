@@ -273,11 +273,30 @@ if (-not $SkipExcel) {
         $wsP.Columns("A:Z").AutoFit() | Out-Null
         $wsP.Activate()
 
+        # SaveAs con DisplayAlerts en $false responde que NO al aviso de
+        # sobrescritura y no lanza error: la unica forma segura de saber si
+        # guardo es volver a habilitar los avisos y borrar el destino antes.
+        if (Test-Path -LiteralPath $xlsxPath) { Remove-Item -LiteralPath $xlsxPath -Force }
+        $xl.DisplayAlerts = $true
+
         # 51 = xlOpenXMLWorkbook (.xlsx)
         $wb.SaveAs($xlsxPath, 51)
+        $guardadoEn = $wb.FullName
         $wb.Close($false)
         $xl.Quit()
-        $excelOk = $true
+
+        # No declarar exito sin comprobar que el archivo existe de verdad.
+        if (Test-Path -LiteralPath $xlsxPath) {
+            $excelOk = $true
+        }
+        elseif ($guardadoEn -and (Test-Path -LiteralPath $guardadoEn)) {
+            Write-Warning "Excel guardo en '$guardadoEn' en lugar de '$xlsxPath'."
+            $xlsxPath = $guardadoEn
+            $excelOk = $true
+        }
+        else {
+            throw "Excel no reporto error pero el archivo '$xlsxPath' no existe. Revisa permisos de escritura en '$OutputDir' (OneDrive o Acceso controlado a carpetas pueden bloquearlo)."
+        }
     }
     catch {
         Write-Warning "No se pudo automatizar Excel: $($_.Exception.Message)"

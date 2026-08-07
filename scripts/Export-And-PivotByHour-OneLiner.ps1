@@ -87,7 +87,12 @@ try {
   $co.Chart.SetSourceData($pt.TableRange1)
   $co.Chart.ChartType = 51
   $wp.Columns("A:Z").AutoFit() | Out-Null
-  $wb.SaveAs($xlsx, 51); $wb.Close($false); $xl.Quit(); $ok = $true
+  if (Test-Path -LiteralPath $xlsx) { Remove-Item -LiteralPath $xlsx -Force }
+  $xl.DisplayAlerts = $true
+  $wb.SaveAs($xlsx, 51); $donde = $wb.FullName; $wb.Close($false); $xl.Quit()
+  if (Test-Path -LiteralPath $xlsx) { $ok = $true }
+  elseif ($donde -and (Test-Path -LiteralPath $donde)) { Write-Warning "Excel guardo en $donde"; $xlsx = $donde; $ok = $true }
+  else { throw "Excel no dio error pero '$xlsx' no existe. Revisa permisos de escritura en $dir." }
 } catch { Write-Warning "Excel fallo: $($_.Exception.Message). El CSV quedo igual en $csv" }
 Write-Host "`nLISTO: $($rows.Count) correos" -ForegroundColor Green
 Write-Host "CSV  : $csv"
