@@ -57,3 +57,31 @@ los 15 días. Con el filtro y `$top=999` son solo las páginas del rango pedido.
 - La coincidencia de nombres de carpeta ignora mayúsculas y espacios repetidos, para que
   `"Marín, Cristhofer - AWG + Wakefern"` no falle por un espacio de más.
 - El CSV se escribe en UTF-8 con BOM para que Excel muestre bien los acentos.
+
+## scripts/PivotCorreosPorHora.bas
+
+Macro de Excel (VBA) que toma el CSV generado por el script anterior y arma una tabla
+dinámica con el conteo de correos por hora del día, en formato 24 h.
+
+### Uso
+
+1. Abrir el CSV en Excel.
+2. `Alt+F11` → **Insertar** → **Módulo** → pegar el contenido del `.bas`.
+3. Volver a Excel, `Alt+F8` → `CrearPivotCorreosPorHora` → **Ejecutar**.
+
+Agrega dos columnas auxiliares (`Hora` con el número 0-23 y `Rango horario` con
+`"10:00 - 10:59"`) y crea la hoja **Correos por hora** con la dinámica y un gráfico de
+barras. Si el CSV incluye la columna `Folder`, la abre como columnas de la dinámica para
+comparar AWG contra Wakefern.
+
+### Extracción de la hora
+
+Cubre los dos casos posibles según cómo Excel haya interpretado la columna `Received`:
+
+- **Fecha/hora real** (`VarType = vbDate` o número de serie) → `Hour()` directo.
+- **Texto** (`"7/23/2026 10:16"`) → se corta después del primer espacio y se lee la parte
+  anterior a los dos puntos; si VBA puede parsear ese fragmento (incluido AM/PM), se usa
+  `Hour(CDate(...))`.
+
+Las filas cuya hora no se puede determinar no se descartan en silencio: se agrupan como
+`(sin hora)` y la macro informa cuántas fueron al terminar.
