@@ -128,3 +128,29 @@ Flujo: `AWG CON - 06 Stuck Flow Sweep`
 | F06-A04 | Envia alerta "[AWG CON] Flujo de consolidacion atascado (+5h)" a pgcustservw2.im@pg.com |
 | F06-A05 | Marca cada registro atascado como Fase `99-ManualReview` |
 | F06-A06–A08 | Borra las filas ya terminadas (Fase `06-Consolidated`) |
+
+---
+
+## Vocabulario de categorias de Outlook
+
+Regla: **todo correo que toca una automatizacion termina con al menos una categoria.**
+Ninguna accion puede escribir `"categories": []`, porque eso borra la etiqueta que
+puso el flujo anterior y deja el correo sin rastro.
+
+| Categoria | Quien la pone | Que significa |
+|---|---|---|
+| `Consolidation` | F00 (regla), F01 (confirmada por la IA), F03 | Va por el camino de consolidacion |
+| `Cancellation` | F00 | Cancelacion detectada por regla |
+| `Return` | F00 | Correo de `traffic_osdclaims1@awginc.com` |
+| `ZQs` | F00 | Correo de `nacsozq.im@pg.com`, se marca leido |
+| `Duplicate` | F00 | Ya existe registro con la misma conversacion |
+| `Wakefern detected` | F00 | Peticion de cambios de Wakefern |
+| `Blocked - system` | F00 | Remitente/asunto bloqueado, incluido el informe "Ship With POs" |
+| `Descartado - antiguo` | F00 | Llego fuera de la ventana de antiguedad |
+| `Cristhofer Marín` | F00, F04 | Marca personal, acompana a la categoria de proceso |
+| `AWG OSSGenAI Processed` | F01, F02, F04, F05 | Correo de la IA ya procesado |
+| `Sin registro - revisar` | F01 | Respuesta de la IA sin registro de router: requiere revision manual |
+| `Sin consolidacion - revisar` | F02 | La IA respondio pero no era una tabla de consolidacion |
+| `Sin POs validos - revisar` | F02 | Llego tabla pero con menos de dos POs |
+
+Categorias retiradas del solucion: `RPA` y `Follow up`.

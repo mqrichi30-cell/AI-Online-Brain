@@ -70,7 +70,26 @@
           "inputs": "@triggerOutputs()?['body/body']"
         },
         "GENERAL_-_00_Guard_Block_AWG_Ship_With_POs_Repot": {
-          "actions": {},
+          "actions": {
+            "GENERAL_-_00_HTTP_Tag_Blocked_Report": {
+              "type": "OpenApiConnection",
+              "runAfter": {},
+              "inputs": {
+                "parameters": {
+                  "Uri": "v1.0/me/messages/@{encodeUriComponent(triggerOutputs()?['body/id'])}",
+                  "Method": "PATCH",
+                  "Body": "{\"categories\": [\"Blocked - system\"], \"isRead\": true}",
+                  "ContentType": "application/json"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "connectionName": "shared_office365",
+                  "operationId": "HttpRequest"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            }
+          },
           "runAfter": {
             "Compose_Email_Body": [
               "Succeeded"

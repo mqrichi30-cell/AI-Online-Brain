@@ -471,7 +471,7 @@
                           "Uri": "v1.0/me/messages/@{encodeUriComponent(body('AWG_-_CON_-_03_HTTP_Route_Current_to_Complete')?['id'])}",
                           "Method": "PATCH",
                           "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
-                          "Body": "{\"isRead\": true}",
+                          "Body": "{\"isRead\": true, \"categories\": [\"Consolidation\"]}",
                           "ContentType": "application/json"
                         },
                         "host": {

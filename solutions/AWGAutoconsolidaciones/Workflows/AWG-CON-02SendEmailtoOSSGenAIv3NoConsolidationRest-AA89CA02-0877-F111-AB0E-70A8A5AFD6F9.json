@@ -352,7 +352,10 @@
                             "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
                             "ContentType": "application/json",
                             "Body": {
-                              "isRead": false
+                              "isRead": false,
+                              "categories": [
+                                "Sin POs validos - revisar"
+                              ]
                             }
                           },
                           "host": {
@@ -399,7 +402,10 @@
                             "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
                             "ContentType": "application/json",
                             "Body": {
-                              "isRead": true
+                              "isRead": true,
+                              "categories": [
+                                "AWG OSSGenAI Processed"
+                              ]
                             }
                           },
                           "host": {
@@ -609,7 +615,10 @@
                     "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
                     "ContentType": "application/json",
                     "Body": {
-                      "isRead": false
+                      "isRead": false,
+                      "categories": [
+                        "Sin consolidacion - revisar"
+                      ]
                     }
                   },
                   "host": {
@@ -656,7 +665,10 @@
                     "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
                     "ContentType": "application/json",
                     "Body": {
-                      "isRead": true
+                      "isRead": true,
+                      "categories": [
+                        "AWG OSSGenAI Processed"
+                      ]
                     }
                   },
                   "host": {
