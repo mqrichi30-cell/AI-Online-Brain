@@ -120,7 +120,26 @@
                 "else": {
                   "actions": {
                     "GENERAL_-_00_Guard_Only_New_Email": {
-                      "actions": {},
+                      "actions": {
+                        "GENERAL_-_00_HTTP_Tag_Skipped_Old": {
+                          "type": "OpenApiConnection",
+                          "runAfter": {},
+                          "inputs": {
+                            "parameters": {
+                              "Uri": "v1.0/me/messages/@{encodeUriComponent(triggerOutputs()?['body/id'])}",
+                              "Method": "PATCH",
+                              "Body": "{\"categories\": [\"Descartado - antiguo\"], \"isRead\": false}",
+                              "ContentType": "application/json"
+                            },
+                            "host": {
+                              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                              "connectionName": "shared_office365",
+                              "operationId": "HttpRequest"
+                            },
+                            "authentication": "@parameters('$authentication')"
+                          }
+                        }
+                      },
                       "else": {
                         "actions": {
                           "GENERAL_-_00_Get_Current_Immutable_ID": {
@@ -565,7 +584,7 @@
                           {
                             "less": [
                               "@ticks(coalesce(triggerOutputs()?['body/receivedDateTime'], triggerOutputs()?['body/DateTimeReceived'], utcNow()))",
-                              "@ticks(addMinutes(utcNow(), -60))"
+                              "@ticks(addMinutes(utcNow(), -1440))"
                             ]
                           }
                         ]
