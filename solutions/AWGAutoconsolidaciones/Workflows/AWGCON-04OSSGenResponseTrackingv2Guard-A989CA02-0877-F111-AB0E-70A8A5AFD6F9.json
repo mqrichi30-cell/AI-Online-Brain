@@ -1,0 +1,454 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_office365": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "awg_sharedoffice365_37d40"
+        },
+        "api": {
+          "name": "shared_office365"
+        }
+      },
+      "shared_sharepointonline": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "awg_sharedsharepointonline_6e67f"
+        },
+        "api": {
+          "name": "shared_sharepointonline"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        }
+      },
+      "triggers": {
+        "When_a_new_email_arrives_in_a_shared_mailbox_(V2)": {
+          "recurrence": {
+            "frequency": "Minute",
+            "interval": 1
+          },
+          "evaluatedRecurrence": {
+            "frequency": "Minute",
+            "interval": 1
+          },
+          "splitOn": "@triggerOutputs()?['body/value']",
+          "metadata": {
+            "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAAAAAEMAAA=": "Inbox",
+            "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAYFina4AAA=": "Marín, Cristhofer - AWG + Wakefern"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "mailboxAddress": "pgcustservw2.im@pg.com",
+              "hasAttachments": false,
+              "includeAttachments": false,
+              "folderId": "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAYFina4AAA="
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+              "connectionName": "shared_office365",
+              "operationId": "SharedMailboxOnNewEmailV2"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        }
+      },
+      "actions": {
+        "AWG_-_CON_-_04_Get_Immutable_ID": {
+          "runAfter": {},
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "Uri": "https://graph.microsoft.com/v1.0/users/pgcustservw2.im@pg.com/messages/@{encodeUriComponent(triggerOutputs()?['body/id'])}?$select=id",
+              "Method": "GET",
+              "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+              "ContentType": "application/json"
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+              "connectionName": "shared_office365",
+              "operationId": "HttpRequest"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "Condition_1": {
+          "actions": {
+            "Calculate_WorkDate": {
+              "runAfter": {
+                "Extract_NewRDD_From_Body": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@trim(\r\n  first(\r\n    split(\r\n      first(\r\n        skip(\r\n          split(\r\n            first(\r\n              split(\r\n                first(\r\n                  skip(\r\n                    split(\r\n                      last(split(triggerOutputs()?['body/body'], '<tbody>')),\r\n                      '<tr>'\r\n                    ),\r\n                    1\r\n                  )\r\n                ),\r\n                '</tr>'\r\n              )\r\n            ),\r\n            '<td>'\r\n          ),\r\n          13\r\n        )\r\n      ),\r\n      '</td>'\r\n    )\r\n  )\r\n)"
+            },
+            "Get_items": {
+              "runAfter": {
+                "DEBUG_NewRDD_ISO": [
+                  "Succeeded"
+                ]
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+                  "table": "70ed8abc-c524-4142-9d8a-86f70ced426c",
+                  "$filter": "OriginalConversationId eq '@{triggerOutputs()?['body/conversationId']}' and Phase eq '03-RDDRequestSent'",
+                  "$top": 1
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                  "connectionName": "shared_sharepointonline",
+                  "operationId": "GetItems"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "AWG_-_CON_-_04_Guard_Not_In_Flow": {
+              "actions": {
+                "AWG_-_CON_-_04_Terminate_Not_In_Flow": {
+                  "type": "Terminate",
+                  "inputs": {
+                    "runStatus": "Cancelled"
+                  }
+                }
+              },
+              "runAfter": {
+                "DEBUG_FULL": [
+                  "Succeeded"
+                ]
+              },
+              "else": {
+                "actions": {}
+              },
+              "expression": {
+                "and": [
+                  {
+                    "equals": [
+                      "@length(body('Get_items')?['value'])",
+                      0
+                    ]
+                  }
+                ]
+              },
+              "type": "If"
+            },
+            "Matched_Tracking_Item": {
+              "runAfter": {
+                "AWG_-_CON_-_04_Guard_Not_In_Flow": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@first(outputs('Get_items')?['body/value'])"
+            },
+            "Condition": {
+              "actions": {
+                "Update_item_1": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "parameters": {
+                      "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+                      "table": "70ed8abc-c524-4142-9d8a-86f70ced426c",
+                      "id": "@first(body('Get_items')?['value'])?['ID']",
+                      "item/Status": "Ready for OSS Follow Up",
+                      "item/WorkDate": "@addDays(outputs('NewRDD_ISO'), -10)",
+                      "item/NewRDD": "@outputs('NewRDD_ISO')",
+                      "item/Phase": "05-FullTableRequestSent",
+                      "item/PhaseSince": "@utcNow()"
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                      "connectionName": "shared_sharepointonline",
+                      "operationId": "PatchItem"
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  }
+                },
+                "AWG_-_CON_-_04_Send_HTTP_OSS_Response": {
+                  "runAfter": {
+                    "Update_item_1": [
+                      "Succeeded"
+                    ]
+                  },
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "parameters": {
+                      "Uri": "https://graph.microsoft.com/v1.0/users/pgcustservw2.im@pg.com/messages/@{encodeUriComponent(body('AWG_-_CON_-_04_Get_Immutable_ID')?['id'])}/reply",
+                      "Method": "POST",
+                      "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                      "Body": "{\n  \"message\": {\n    \"toRecipients\": [\n      {\n        \"emailAddress\": {\n          \"address\": \"ossgenai.im@pg.com\"\n        }\n      }\n    ],\n    \"ccRecipients\": [],\n    \"bccRecipients\": []\n  },\n  \"comment\": \"FOR ROUTING USE WORKFLOW=na_om_data_agent (AskOM)<br><br>Extract Consolidation Orders<br><br>Step 1 – Review the Email Chain:<br><br>Read the entire forwarded email chain. Identify the orders that have to be consolidated or shipped together. Extract only the orders explicitly requested for consolidation and ignore any other PO or SO numbers.<br><br>Step 2 – Identify Filter Criteria:<br><br>Determine the customer who is requesting the consolidation. This customer’s name should match the Ship-to name on the order.<br><br>Ensure that the AWG Purchase Order (PO #) and the Sales Order (SO #) correspond correctly.<br><br>Step 3 – Data Extraction and RDD:<br><br>Retrieve the consolidation orders, extracting:<br><br>- AWG Purchase Order (PO #)<br><br>- Sales Order (SO #)<br><br>- Customer name (Ship-to Name)<br><br>- Requested Delivery Date (RDD)<br><br>- Collective Number<br><br>- Shipment Number<br><br>- Delivery Number<br><br>Important: The RDD must be taken from the customer request stated in the email, not from your data. If the customer provides multiple RDDs, assign each order the specific RDD stated for it. If the customer does not provide an RDD for an order, use the current RDD from your data. Shipment Number and Delivery Number may be left blank only if they do not exist for the PO.<br><br>Step 4 – Truck Assignment:<br><br>Include a column named Truck # that indicates which orders are meant to ship together. Use 1 for the first group, 2 for the second group, etc.<br><br>If two or more POs are meant to go in the same truck, they must all share the same Truck # value.<br><br>Step 5 – Final Table Format:<br><br>Create an HTML table with exactly these columns:<br><br>Truck #, PO #, SO #, Customer name, RDD, Collective Number, Shipment Number, Delivery Number<br><br>After these instructions, the forwarded email chain will follow.<br><br>Regards,<br><br>pgcustservw2.im@pg.com<br>NA Order Management | Regional\"\n}",
+                      "ContentType": "application/json"
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                      "connectionName": "shared_office365",
+                      "operationId": "HttpRequest"
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  }
+                }
+              },
+              "runAfter": {
+                "Matched_Tracking_Item": [
+                  "Succeeded"
+                ]
+              },
+              "else": {
+                "actions": {
+                  "Update_item": {
+                    "type": "OpenApiConnection",
+                    "inputs": {
+                      "parameters": {
+                        "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+                        "table": "70ed8abc-c524-4142-9d8a-86f70ced426c",
+                        "id": "@first(body('Get_items')?['value'])?['ID']",
+                        "item/Status": "Pending 10 Days Out",
+                        "item/WorkDate": "@addDays(outputs('NewRDD_ISO'), -10)",
+                        "item/NewRDD": "@outputs('NewRDD_ISO')",
+                        "item/PhaseSince": "@utcNow()"
+                      },
+                      "host": {
+                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                        "connectionName": "shared_sharepointonline",
+                        "operationId": "PatchItem"
+                      },
+                      "authentication": "@parameters('$authentication')"
+                    }
+                  },
+                  "OriginalRequesterEmail": {
+                    "runAfter": {
+                      "DEBUG_CREATE": [
+                        "Succeeded"
+                      ]
+                    },
+                    "type": "Compose",
+                    "inputs": "@first(\r\n  split(\r\n    first(\r\n      skip(\r\n        split(\r\n          last(\r\n            split(\r\n              first(split(triggerOutputs()?['body/body'], '[EXTERNAL]')),\r\n              'From:</span></b>'\r\n            )\r\n          ),\r\n          'mailto:'\r\n        ),\r\n        1\r\n      )\r\n    ),\r\n    '\"'\r\n  )\r\n)"
+                  },
+                  "DEBUG_CREATE": {
+                    "runAfter": {
+                      "Update_item": [
+                        "Succeeded"
+                      ]
+                    },
+                    "type": "Compose",
+                    "inputs": "@concat(\r\n  'ConversationId: ', triggerOutputs()?['body/conversationId'],\r\n  decodeUriComponent('%0A'),\r\n  'NewRDD: ', outputs('Calculate_WorkDate'),\r\n  decodeUriComponent('%0A'),\r\n  'NewRDD_ISO: ', outputs('NewRDD_ISO'),\r\n  decodeUriComponent('%0A'),\r\n  'ShouldGoImmediate: ', string(greaterOrEquals(utcNow(), addDays(outputs('NewRDD_ISO'), -10)))\r\n)"
+                  },
+                  "AWG_-_CON_-_04_Send_HTTP_OSS_Response_1": {
+                    "runAfter": {
+                      "OriginalRequesterEmail": [
+                        "Succeeded"
+                      ]
+                    },
+                    "type": "OpenApiConnection",
+                    "inputs": {
+                      "parameters": {
+                        "Uri": "https://graph.microsoft.com/v1.0/users/pgcustservw2.im@pg.com/messages/@{encodeUriComponent(body('AWG_-_CON_-_04_Get_Immutable_ID')?['id'])}/reply",
+                        "Method": "POST",
+                        "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                        "Body": "{\n  \"message\": {\n    \"toRecipients\": [\n      {\n        \"emailAddress\": {\n          \"address\": \"ossgenai.im@pg.com\"\n        }\n      }\n    ],\n    \"ccRecipients\": [],\n    \"bccRecipients\": []\n  },\n  \"comment\": \"Hello,<br><br>This consolidation request has been reviewed.<br><br>Based on the aligned Requested Delivery Date, this consolidation will be worked once it enters the 10 days out window.<br><br>Scheduled work date: @{formatDateTime(addDays(outputs('NewRDD_ISO'), -10), 'MM/dd/yyyy')}<br><br>Thank you.<br>Regards,<br><br>pgcustservw2.im@pg.com<br>NA Order Management | Regional\"\n}",
+                        "ContentType": "application/json"
+                      },
+                      "host": {
+                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                        "connectionName": "shared_office365",
+                        "operationId": "HttpRequest"
+                      },
+                      "authentication": "@parameters('$authentication')"
+                    }
+                  }
+                }
+              },
+              "expression": {
+                "and": [
+                  {
+                    "greaterOrEquals": [
+                      "@utcNow()",
+                      "@addDays(outputs('NewRDD_ISO'), -10)"
+                    ]
+                  }
+                ]
+              },
+              "type": "If"
+            },
+            "Extract_NewRDD_From_Body": {
+              "type": "Compose",
+              "inputs": "@first(skip(split(triggerOutputs()?['body/body'], '<td>21/'), 1))"
+            },
+            "NewRDD_ISO": {
+              "runAfter": {
+                "Calculate_WorkDate": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@concat(\r\n  last(split(outputs('Calculate_WorkDate'), '/')),\r\n  '-',\r\n  first(skip(split(outputs('Calculate_WorkDate'), '/'), 1)),\r\n  '-',\r\n  first(split(outputs('Calculate_WorkDate'), '/'))\r\n)"
+            },
+            "DEBUG_ConversationId": {
+              "runAfter": {
+                "NewRDD_ISO": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@triggerOutputs()?['body/conversationId']"
+            },
+            "DEBUG_FilterQuery": {
+              "runAfter": {
+                "DEBUG_ConversationId": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@concat(\r\n  'Status eq ''Pending OSS Response'' and OriginalConversationId eq ''',\r\n  triggerOutputs()?['body/conversationId'],\r\n  ''''\r\n)"
+            },
+            "DEBUG_NewRDD_Raw": {
+              "runAfter": {
+                "DEBUG_FilterQuery": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@outputs('Calculate_WorkDate')"
+            },
+            "DEBUG_NewRDD_ISO": {
+              "runAfter": {
+                "DEBUG_NewRDD_Raw": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@outputs('NewRDD_ISO')"
+            },
+            "DEBUG_GetItems_Count": {
+              "runAfter": {
+                "Get_items": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@length(body('Get_items')?['value'])"
+            },
+            "DEBUG_GetItems_FirstID": {
+              "runAfter": {
+                "DEBUG_GetItems_Count": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@first(body('Get_items')?['value'])?['ID']"
+            },
+            "DEBUG_FULL": {
+              "runAfter": {
+                "DEBUG_GetItems_FirstID": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Compose",
+              "inputs": "@concat(\r\n  'ConversationId: ', triggerOutputs()?['body/conversationId'],\r\n  decodeUriComponent('%0A'),\r\n  'FilterQuery: ', outputs('DEBUG_FilterQuery'),\r\n  decodeUriComponent('%0A'),\r\n  'NewRDD_Raw: ', outputs('Calculate_WorkDate'),\r\n  decodeUriComponent('%0A'),\r\n  'NewRDD_ISO: ', outputs('NewRDD_ISO'),\r\n  decodeUriComponent('%0A'),\r\n  'GetItems_Count: ', string(length(body('Get_items')?['value'])),\r\n  decodeUriComponent('%0A'),\r\n  'GetItems_FirstID: ', string(first(body('Get_items')?['value'])?['ID'])\r\n)"
+            },
+            "Asign_Category": {
+              "runAfter": {
+                "Condition": [
+                  "Succeeded"
+                ]
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "Uri": "https://graph.microsoft.com/v1.0/users/pgcustservw2.im@pg.com/messages/@{encodeUriComponent(body('AWG_-_CON_-_04_Get_Immutable_ID')?['id'])}",
+                  "Method": "PATCH",
+                  "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                  "Body": "{\n  \"categories\": [\n    \"Cristhofer Marín\",\n    \"AWG OSSGenAI Processed\"\n  ]\n}",
+                  "ContentType": "application/json"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "connectionName": "shared_office365",
+                  "operationId": "HttpRequest"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Send_an_HTTP_request_2": {
+              "runAfter": {
+                "Asign_Category": [
+                  "Succeeded"
+                ]
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "Uri": "https://graph.microsoft.com/v1.0/users/pgcustservw2.im@pg.com/messages/@{encodeUriComponent(body('AWG_-_CON_-_04_Get_Immutable_ID')?['id'])}/move",
+                  "Method": "POST",
+                  "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                  "Body": "{\n  \"destinationId\": \"AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAAiDm4CAAA=\"\n}",
+                  "ContentType": "application/json"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "connectionName": "shared_office365",
+                  "operationId": "HttpRequest"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            }
+          },
+          "runAfter": {
+            "AWG_-_CON_-_04_Get_Immutable_ID": [
+              "Succeeded"
+            ]
+          },
+          "else": {
+            "actions": {}
+          },
+          "expression": {
+            "and": [
+              {
+                "contains": [
+                  "@triggerOutputs()?['body/body']",
+                  "Customer Item # "
+                ]
+              },
+              {
+                "contains": [
+                  "@triggerOutputs()?['body/body']",
+                  "Pom code"
+                ]
+              },
+              {
+                "contains": [
+                  "@triggerOutputs()?['body/body']",
+                  "L3"
+                ]
+              },
+              {
+                "contains": [
+                  "@triggerOutputs()?['body/body']",
+                  "Current RDD"
+                ]
+              }
+            ]
+          },
+          "type": "If"
+        }
+      },
+      "outputs": {}
+    },
+    "templateName": null
+  },
+  "schemaVersion": "1.0.0.0"
+}

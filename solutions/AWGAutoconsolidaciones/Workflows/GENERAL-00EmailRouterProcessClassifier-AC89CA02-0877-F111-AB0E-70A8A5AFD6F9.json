@@ -1,0 +1,707 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_office365": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "awg_sharedoffice365_37d40"
+        },
+        "api": {
+          "name": "shared_office365"
+        }
+      },
+      "shared_sharepointonline": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "awg_sharedsharepointonline_6e67f"
+        },
+        "api": {
+          "name": "shared_sharepointonline"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        }
+      },
+      "triggers": {
+        "When_a_new_email_arrives_(V3)": {
+          "splitOn": "@triggerOutputs()?['body/value']",
+          "metadata": {
+            "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAYFina4AAA=": "Marín, Cristhofer - AWG + Wakefern"
+          },
+          "type": "OpenApiConnectionNotification",
+          "inputs": {
+            "parameters": {
+              "folderPath": "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAYFina4AAA="
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+              "connectionName": "shared_office365",
+              "operationId": "OnNewEmailV3"
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "conditions": [
+            {
+              "expression": "@and(not(contains(toLower(string(coalesce(triggerOutputs()?['body/from'],''))),'ossgenai.im@pg.com')),not(contains(toLower(string(coalesce(triggerOutputs()?['body/from'],''))),'nacsoshared.im@pg.com')),not(contains(toLower(coalesce(triggerOutputs()?['body/subject'],'')),'awg-flow-id:')),not(contains(toLower(coalesce(triggerOutputs()?['body/subject'],'')),'awg-step:')),not(contains(toLower(string(coalesce(triggerOutputs()?['body/categories'],''))),'no match')),not(contains(toLower(string(coalesce(triggerOutputs()?['body/from'],''))),'doom.im@pg.com')),not(contains(toLower(coalesce(triggerOutputs()?['body/subject'],'')),'flujo de consolidacion atascado')))"
+            }
+          ],
+          "runtimeConfiguration": {
+            "concurrency": {
+              "runs": 1
+            }
+          }
+        }
+      },
+      "actions": {
+        "Compose_Email_Body": {
+          "runAfter": {},
+          "type": "Compose",
+          "inputs": "@triggerOutputs()?['body/body']"
+        },
+        "GENERAL_-_00_Guard_Block_AWG_Ship_With_POs_Repot": {
+          "actions": {
+            "GENERAL_-_00_HTTP_Tag_Blocked_Report": {
+              "type": "OpenApiConnection",
+              "runAfter": {},
+              "inputs": {
+                "parameters": {
+                  "Uri": "v1.0/me/messages/@{encodeUriComponent(triggerOutputs()?['body/id'])}",
+                  "Method": "PATCH",
+                  "Body": "{\"categories\": [\"Blocked - system\"], \"isRead\": true}",
+                  "ContentType": "application/json"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "connectionName": "shared_office365",
+                  "operationId": "HttpRequest"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            }
+          },
+          "runAfter": {
+            "Compose_Email_Body": [
+              "Succeeded"
+            ]
+          },
+          "else": {
+            "actions": {
+              "GENERAL_-_00_Compose_Wakefern_Block_Text": {
+                "type": "Compose",
+                "inputs": "@concat('Subject=', coalesce(triggerOutputs()?['body/subject'], ''), ' | From=', string(triggerOutputs()?['body/from']), ' | Sender=', string(triggerOutputs()?['body/sender']), ' | Message=', first(split(first(split(first(split(first(split(first(split(first(split(last(split(coalesce(triggerOutputs()?['body/body'], ''), '<body')), 'FOR ROUTING USE WORKFLOW=')), '-----Original Message-----')), '________________________________')), 'From:')), 'Sent:')), ' wrote:')))"
+              },
+              "GENERAL_-_00_Guard_Block_Wakefern": {
+                "actions": {
+                  "GENERAL_-_00_DEBUG_AI_System_or_Routed_Email_Skipped": {
+                    "type": "Compose",
+                    "inputs": "@concat('Skipped: AI/system/routed email blocked. Subject=', coalesce(triggerOutputs()?['body/subject'], ''), ' | From=', string(triggerOutputs()?['body/from']))"
+                  },
+                  "GENERAL_-_00_HTTP_Tag_Wakefern_Detected": {
+                    "runAfter": {
+                      "GENERAL_-_00_DEBUG_AI_System_or_Routed_Email_Skipped": [
+                        "Succeeded"
+                      ]
+                    },
+                    "type": "OpenApiConnection",
+                    "inputs": {
+                      "parameters": {
+                        "Uri": "v1.0/me/messages/@{encodeUriComponent(triggerOutputs()?['body/id'])}",
+                        "Method": "PATCH",
+                        "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                        "Body": "@concat('{\"categories\":[\"', if(contains(toLower(outputs('GENERAL_-_00_Compose_Wakefern_Block_Text')), 'rpa email request to changes'), 'Wakefern detected', 'Blocked - system'), '\"]}')",
+                        "ContentType": "application/json"
+                      },
+                      "host": {
+                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                        "connectionName": "shared_office365",
+                        "operationId": "HttpRequest"
+                      },
+                      "authentication": "@parameters('$authentication')"
+                    }
+                  }
+                },
+                "runAfter": {
+                  "GENERAL_-_00_Compose_Wakefern_Block_Text": [
+                    "Succeeded"
+                  ]
+                },
+                "else": {
+                  "actions": {
+                    "GENERAL_-_00_Guard_Only_New_Email": {
+                      "actions": {
+                        "GENERAL_-_00_HTTP_Tag_Skipped_Old": {
+                          "type": "OpenApiConnection",
+                          "runAfter": {},
+                          "inputs": {
+                            "parameters": {
+                              "Uri": "v1.0/me/messages/@{encodeUriComponent(triggerOutputs()?['body/id'])}",
+                              "Method": "PATCH",
+                              "Body": "{\"categories\": [\"Descartado - antiguo\"], \"isRead\": false}",
+                              "ContentType": "application/json"
+                            },
+                            "host": {
+                              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                              "connectionName": "shared_office365",
+                              "operationId": "HttpRequest"
+                            },
+                            "authentication": "@parameters('$authentication')"
+                          }
+                        }
+                      },
+                      "else": {
+                        "actions": {
+                          "GENERAL_-_00_Get_Current_Immutable_ID": {
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                              "parameters": {
+                                "Uri": "v1.0/me/messages/@{encodeUriComponent(triggerOutputs()?['body/id'])}?$select=id,conversationId,subject,parentFolderId,from",
+                                "Method": "GET",
+                                "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                "ContentType": "application/json"
+                              },
+                              "host": {
+                                "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                "connectionName": "shared_office365",
+                                "operationId": "HttpRequest"
+                              },
+                              "authentication": "@parameters('$authentication')"
+                            }
+                          },
+                          "Compose_Original_Immutable_ID": {
+                            "runAfter": {
+                              "GENERAL_-_00_Get_Current_Immutable_ID": [
+                                "Succeeded"
+                              ]
+                            },
+                            "type": "Compose",
+                            "inputs": "@body('GENERAL_-_00_Get_Current_Immutable_ID')?['id']"
+                          },
+                          "Compose_Original_Conversation_ID": {
+                            "runAfter": {
+                              "Compose_Original_Immutable_ID": [
+                                "Succeeded"
+                              ]
+                            },
+                            "type": "Compose",
+                            "inputs": "@body('GENERAL_-_00_Get_Current_Immutable_ID')?['conversationId']"
+                          },
+                          "GENERAL_-_00_Debug_Dedupe_Key": {
+                            "runAfter": {
+                              "Compose_Original_Conversation_ID": [
+                                "Succeeded"
+                              ]
+                            },
+                            "type": "Compose",
+                            "inputs": "@concat('LoopGuard dedupe | ConversationId=', outputs('Compose_Original_Conversation_ID'), ' | Subject=', coalesce(triggerOutputs()?['body/subject'], ''))"
+                          },
+                          "GENERAL_-_00_Check_Already_Routed_By_ConversationId": {
+                            "runAfter": {
+                              "GENERAL_-_00_Debug_Dedupe_Key": [
+                                "Succeeded"
+                              ]
+                            },
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                              "parameters": {
+                                "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+                                "table": "70ed8abc-c524-4142-9d8a-86f70ced426c",
+                                "$filter": "OriginalConversationId eq '@{replace(outputs('Compose_Original_Conversation_ID'),'''','''''')}'",
+                                "$top": 1
+                              },
+                              "host": {
+                                "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                                "connectionName": "shared_sharepointonline",
+                                "operationId": "GetItems"
+                              },
+                              "authentication": "@parameters('$authentication')"
+                            }
+                          },
+                          "GENERAL_-_00_Guard_Already_Routed": {
+                            "actions": {
+                              "GENERAL_-_00_DEBUG_Already_Routed_Skipped": {
+                                "type": "Compose",
+                                "inputs": "@concat('Skipped: SharePoint already has a router record for this conversation or subject. Subject=', coalesce(triggerOutputs()?['body/subject'], ''), ' | ConversationId=', outputs('Compose_Original_Conversation_ID'))"
+                              },
+                              "GENERAL_-_00_HTTP_Tag_Duplicate_And_Unread": {
+                                "runAfter": {
+                                  "GENERAL_-_00_DEBUG_Already_Routed_Skipped": [
+                                    "Succeeded"
+                                  ]
+                                },
+                                "type": "OpenApiConnection",
+                                "inputs": {
+                                  "parameters": {
+                                    "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Original_Immutable_ID'))}",
+                                    "Method": "PATCH",
+                                    "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                    "Body": "{\"isRead\":false,\"categories\":[\"Duplicate\"]}",
+                                    "ContentType": "application/json"
+                                  },
+                                  "host": {
+                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                    "connectionName": "shared_office365",
+                                    "operationId": "HttpRequest"
+                                  },
+                                  "authentication": "@parameters('$authentication')"
+                                }
+                              }
+                            },
+                            "runAfter": {
+                              "GENERAL_-_00_Check_Already_Routed_By_ConversationId": [
+                                "Succeeded"
+                              ]
+                            },
+                            "else": {
+                              "actions": {
+                                "Compose_FlowId": {
+                                  "type": "Compose",
+                                  "inputs": "@guid()",
+                                  "runAfter": {
+                                    "GENERAL_-_00_HTTP_Patch_Original_Read_Tags": [
+                                      "Succeeded"
+                                    ]
+                                  }
+                                },
+                                "GENERAL_-_00_Create_Router_Tracking_Record": {
+                                  "runAfter": {
+                                    "Compose_FlowId": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "OpenApiConnection",
+                                  "inputs": {
+                                    "parameters": {
+                                      "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+                                      "table": "70ed8abc-c524-4142-9d8a-86f70ced426c",
+                                      "item/Title": "@concat('GENERAL-00-', outputs('Compose_FlowId'))",
+                                      "item/OriginalMessageId": "@outputs('Compose_Original_Immutable_ID')",
+                                      "item/OriginalConversationId": "@outputs('Compose_Original_Conversation_ID')",
+                                      "item/OriginalSubject": "@triggerOutputs()?['body/subject']",
+                                      "item/Status": "@if(equals(outputs('GENERAL_-_00_Rule_Classification'), 'Consolidation'), 'Consolidation', if(equals(outputs('GENERAL_-_00_Rule_Classification'), 'Cancellation'), 'Cancellation', if(equals(outputs('GENERAL_-_00_Rule_Classification'), 'Return'), 'Return', if(equals(outputs('GENERAL_-_00_Rule_Classification'), 'ZQs'), 'ZQs', 'Flow0-PromptSentToIA'))))",
+                                      "item/FlowId": "@outputs('Compose_FlowId')",
+                                      "item/Phase": "@if(equals(outputs('GENERAL_-_00_Rule_Classification'), 'Consolidation'), '01-IntakeSent', if(equals(outputs('GENERAL_-_00_Rule_Classification'), 'Cancellation'), '00-RuleCancellation', if(equals(outputs('GENERAL_-_00_Rule_Classification'), 'Return'), '00-RuleReturn', if(equals(outputs('GENERAL_-_00_Rule_Classification'), 'ZQs'), '00-RuleZQ', '00-RouterSent'))))",
+                                      "item/PhaseSince": "@utcNow()"
+                                    },
+                                    "host": {
+                                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                                      "connectionName": "shared_sharepointonline",
+                                      "operationId": "PostItem"
+                                    },
+                                    "authentication": "@parameters('$authentication')"
+                                  }
+                                },
+                                "GENERAL_-_00_Update_Classifier_Reply_Draft_To_OSSGenAI": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_Guard_Rule_Is_Cancellation": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "Compose",
+                                  "inputs": "Direct reply was sent by GENERAL - 00 HTTP Reply Original to OSSGenAI SameThread. Draft update skipped."
+                                },
+                                "GENERAL_-_00_Send_Classifier_Reply_Draft_To_OSSGenAI": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_Update_Classifier_Reply_Draft_To_OSSGenAI": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "Compose",
+                                  "inputs": "Direct reply already sent. Draft send skipped."
+                                },
+                                "GENERAL_-_00_Get_Client_Folder": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_Send_Classifier_Reply_Draft_To_OSSGenAI": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "OpenApiConnection",
+                                  "inputs": {
+                                    "parameters": {
+                                      "Uri": "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/childFolders?$filter=displayName%20eq%20%27Mar%C3%ADn%2C%20Cristhofer%20-%20AWG%20%2B%20Wakefern%27&$top=1",
+                                      "Method": "GET"
+                                    },
+                                    "host": {
+                                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                      "connectionName": "shared_office365",
+                                      "operationId": "HttpRequest"
+                                    },
+                                    "authentication": "@parameters('$authentication')"
+                                  }
+                                },
+                                "GENERAL_-_00_Get_Email_Route_00_Folder": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_Get_Client_Folder": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "OpenApiConnection",
+                                  "inputs": {
+                                    "parameters": {
+                                      "Uri": "@concat('https://graph.microsoft.com/v1.0/me/mailFolders/', encodeUriComponent(first(body('GENERAL_-_00_Get_Client_Folder')?['value'])?['id']), '/childFolders?$filter=displayName%20eq%20%27GENERAL%20-%20Email%20Route%20-%2000%27&$top=1')",
+                                      "Method": "GET"
+                                    },
+                                    "host": {
+                                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                      "connectionName": "shared_office365",
+                                      "operationId": "HttpRequest"
+                                    },
+                                    "authentication": "@parameters('$authentication')"
+                                  }
+                                },
+                                "GENERAL_-_00_Target_Email_Route_00_Folder_Id": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_Get_Email_Route_00_Folder": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "Compose",
+                                  "inputs": "@first(body('GENERAL_-_00_Get_Email_Route_00_Folder')?['value'])?['id']"
+                                },
+                                "GENERAL_-_00_Move_To_Email_Route_00": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_Target_Email_Route_00_Folder_Id": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "OpenApiConnection",
+                                  "inputs": {
+                                    "parameters": {
+                                      "Uri": "@concat('https://graph.microsoft.com/v1.0/me/messages/', encodeUriComponent(triggerOutputs()?['body/id']), '/move')",
+                                      "Method": "POST",
+                                      "Body": "@concat('{\"destinationId\":\"', outputs('GENERAL_-_00_Target_Email_Route_00_Folder_Id'), '\"}')",
+                                      "ContentType": "application/json"
+                                    },
+                                    "host": {
+                                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                      "connectionName": "shared_office365",
+                                      "operationId": "HttpRequest"
+                                    },
+                                    "authentication": "@parameters('$authentication')"
+                                  }
+                                },
+                                "GENERAL_-_00_HTTP_Patch_Original_Read_Tags": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_DEBUG_Rule_Result": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "OpenApiConnection",
+                                  "inputs": {
+                                    "parameters": {
+                                      "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Original_Immutable_ID'))}",
+                                      "Method": "PATCH",
+                                      "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                      "Body": "@concat('{\"isRead\":true,\"categories\":[\"Cristhofer Marín\",\"', outputs('GENERAL_-_00_Rule_Classification'), '\"]}')",
+                                      "ContentType": "application/json"
+                                    },
+                                    "host": {
+                                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                      "connectionName": "shared_office365",
+                                      "operationId": "HttpRequest"
+                                    },
+                                    "authentication": "@parameters('$authentication')"
+                                  }
+                                },
+                                "GENERAL_-_00_Rule_Client_Message": {
+                                  "runAfter": {},
+                                  "type": "Compose",
+                                  "inputs": "@first(split(first(split(first(split(first(split(first(split(first(split(last(split(coalesce(triggerOutputs()?['body/body'], ''), '<body')), 'FOR ROUTING USE WORKFLOW=')), '-----Original Message-----')), '________________________________')), 'From:')), 'Sent:')), ' wrote:'))"
+                                },
+                                "GENERAL_-_00_Rule_Scope": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_Rule_Client_Message": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "Compose",
+                                  "inputs": "@toLower(concat(coalesce(triggerOutputs()?['body/subject'], ''), ' ', outputs('GENERAL_-_00_Rule_Client_Message')))"
+                                },
+                                "GENERAL_-_00_Rule_Sender": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_Rule_Scope": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "Compose",
+                                  "inputs": "@toLower(string(coalesce(triggerOutputs()?['body/from'], '')))"
+                                },
+                                "GENERAL_-_00_Rule_Blocked": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_Rule_Sender": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "Compose",
+                                  "inputs": "@or(contains(outputs('GENERAL_-_00_Rule_Sender'), 'cpusched.im@pg.com'),contains(outputs('GENERAL_-_00_Rule_Sender'), 'execution.im@pg.com'),startsWith(toLower(coalesce(triggerOutputs()?['body/subject'],'')), 'automatic reply:'),startsWith(toLower(coalesce(triggerOutputs()?['body/subject'],'')), 'automatic reply :'),startsWith(toLower(coalesce(triggerOutputs()?['body/subject'],'')), 'out of office'),startsWith(toLower(coalesce(triggerOutputs()?['body/subject'],'')), 'respuesta automatica'),startsWith(toLower(coalesce(triggerOutputs()?['body/subject'],'')), 'undeliverable:'),contains(toLower(coalesce(triggerOutputs()?['body/subject'],'')), 'delivery status notification'))"
+                                },
+                                "GENERAL_-_00_Rule_Inquiry": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_Rule_Blocked": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "Compose",
+                                  "inputs": "@or(contains(outputs('GENERAL_-_00_Rule_Scope'), 'do you have details'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'any details on'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'do you know'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'do you have info'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'i''m not finding'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'i am not finding'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'i see your id'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'can you confirm if'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'any update on'))"
+                                },
+                                "GENERAL_-_00_Rule_Negation": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_Rule_Inquiry": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "Compose",
+                                  "inputs": "@or(contains(outputs('GENERAL_-_00_Rule_Scope'), 'do not consolidate'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'no longer need'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'do not ship with'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'cancel the consolidation'))"
+                                },
+                                "GENERAL_-_00_Rule_Cancellation": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_Rule_Negation": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "Compose",
+                                  "inputs": "@or(contains(outputs('GENERAL_-_00_Rule_Scope'), 'cancel'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'delete'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'void the order'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'void po'))"
+                                },
+                                "GENERAL_-_00_Rule_Consolidation": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_Rule_Cancellation": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "Compose",
+                                  "inputs": "@or(contains(outputs('GENERAL_-_00_Rule_Scope'), 'consolidate'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'consolidat'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'ship together'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'ship with'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'ride with'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'riding with'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'combine'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'pairing'),contains(outputs('GENERAL_-_00_Rule_Scope'), 'load with'))"
+                                },
+                                "GENERAL_-_00_Rule_Classification": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_Rule_Consolidation": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "Compose",
+                                  "inputs": "@if(outputs('GENERAL_-_00_Rule_Blocked'), 'No Match', if(contains(outputs('GENERAL_-_00_Rule_Sender'), 'nacsozq.im@pg.com'), 'ZQs', if(contains(outputs('GENERAL_-_00_Rule_Sender'), 'traffic_osdclaims1@awginc.com'), 'Return', if(outputs('GENERAL_-_00_Rule_Inquiry'), 'No Match', if(outputs('GENERAL_-_00_Rule_Negation'), 'No Match', if(outputs('GENERAL_-_00_Rule_Cancellation'), 'Cancellation', if(outputs('GENERAL_-_00_Rule_Consolidation'), 'Consolidation', 'No Match')))))))"
+                                },
+                                "GENERAL_-_00_DEBUG_Rule_Result": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_Rule_Classification": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "Compose",
+                                  "inputs": "@concat('Reglas => ', outputs('GENERAL_-_00_Rule_Classification'), ' | bloqueado=', string(outputs('GENERAL_-_00_Rule_Blocked')), ' | consulta=', string(outputs('GENERAL_-_00_Rule_Inquiry')), ' | negacion=', string(outputs('GENERAL_-_00_Rule_Negation')), ' | cancel=', string(outputs('GENERAL_-_00_Rule_Cancellation')), ' | consol=', string(outputs('GENERAL_-_00_Rule_Consolidation')), ' | texto=', substring(outputs('GENERAL_-_00_Rule_Client_Message'), 0, min(400, length(outputs('GENERAL_-_00_Rule_Client_Message')))))"
+                                },
+                                "GENERAL_-_00_Rule_Reply_Comment": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_Create_Router_Tracking_Record": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "Compose",
+                                  "inputs": "@concat(if(equals(outputs('GENERAL_-_00_Rule_Classification'), 'Consolidation'), 'FOR ROUTING USE WORKFLOW=na_om_data_agent (AskOM)<br><br><strong>READ SCOPE:</strong> Use the latest actual customer email in the reply history below this prompt. Ignore this prompt, older replies, signatures, disclaimers and system-generated status messages.<br><br>Extract the consolidation details from that customer email.<br><br>Return a table with exactly 2 columns: Truck # and PO #<br>Each row must contain exactly one PO only. Never place multiple PO numbers in the same PO # cell. If multiple POs belong to the same truck, create one separate row per PO and repeat the same Truck # value on each row.<br>Use Truck #1 as standard. If the customer sends more than one consolidation, use Truck #2, Truck #3, etc.<br>If the email is a system/status/error notification, or has no explicit PO or SO number, respond exactly: Is not a consolidation<br><br>Regards,<br>pgcustservw2.im@pg.com<br>NA Order Management | Regional', 'FOR ROUTING USE WORKFLOW=na_om_data_agent (AskOM)<br><br>Classify ONLY the customer message delimited between the markers === CUSTOMER MESSAGE START === and === CUSTOMER MESSAGE END === below.<br>Everything else in this email thread is context you MUST ignore completely: tables, previous replies, our own outgoing messages, signatures, disclaimers and system-generated notifications.<br>If the delimited message contains no request, the answer is No Match.<br><br>Classify this email into exactly one process type.<br><br><strong>Output rules:</strong><br>Return only one table, with exactly one column and exactly one data row.<br>The column header must be exactly: ProcessType<br>The value must be exactly one of: Consolidation, Cancellation, Wakefern Appointments, No Match<br>Do not add explanations, comments, or any text before or after the table.<br>Do not look up order data. Do not return purchase order, sales order, delivery or shipment information.<br><br>Regards,<br>pgcustservw2.im@pg.com<br>NA Order Management | Regional'), '<br><br>=== CUSTOMER MESSAGE START ===<br>', replace(replace(replace(replace(substring(outputs('GENERAL_-_00_Rule_Client_Message'), 0, min(6000, length(outputs('GENERAL_-_00_Rule_Client_Message')))), '\\', ' '), '\"', ''), decodeUriComponent('%0D'), ' '), decodeUriComponent('%0A'), ' '), '<br>=== CUSTOMER MESSAGE END ===<br><br>', '<p style=''font-size:1px;color:#ffffff;line-height:1px''>AWG-FLOW-ID: ', outputs('Compose_FlowId'), ' | AWG-STEP: ', if(equals(outputs('GENERAL_-_00_Rule_Classification'), 'Consolidation'), 'CONSOLIDATION_CONFIRM', 'PROCESS_CLASSIFIER'), '</p>')"
+                                },
+                                "GENERAL_-_00_Guard_Rule_Is_Cancellation": {
+                                  "runAfter": {
+                                    "GENERAL_-_00_Rule_Reply_Comment": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "type": "If",
+                                  "expression": {
+                                    "or": [
+                                      {
+                                        "equals": [
+                                          "@outputs('GENERAL_-_00_Rule_Classification')",
+                                          "Cancellation"
+                                        ]
+                                      },
+                                      {
+                                        "equals": [
+                                          "@outputs('GENERAL_-_00_Rule_Classification')",
+                                          "Return"
+                                        ]
+                                      },
+                                      {
+                                        "equals": [
+                                          "@outputs('GENERAL_-_00_Rule_Classification')",
+                                          "ZQs"
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  "actions": {
+                                    "GENERAL_-_00_HTTP_Tag_Cancellation_Pending": {
+                                      "runAfter": {},
+                                      "type": "OpenApiConnection",
+                                      "inputs": {
+                                        "parameters": {
+                                          "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Original_Immutable_ID'))}",
+                                          "Method": "PATCH",
+                                          "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                          "Body": "@concat('{\"isRead\":', if(equals(outputs('GENERAL_-_00_Rule_Classification'), 'ZQs'), 'true', 'false'), ',\"categories\":[\"', outputs('GENERAL_-_00_Rule_Classification'), '\"]}')",
+                                          "ContentType": "application/json"
+                                        },
+                                        "host": {
+                                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                          "connectionName": "shared_office365",
+                                          "operationId": "HttpRequest"
+                                        },
+                                        "authentication": "@parameters('$authentication')"
+                                      }
+                                    }
+                                  },
+                                  "else": {
+                                    "actions": {
+                                      "GENERAL_-_00_HTTP_Reply_Original_to_OSSGenAI_SameThread": {
+                                        "runAfter": {},
+                                        "type": "OpenApiConnection",
+                                        "inputs": {
+                                          "parameters": {
+                                            "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Original_Immutable_ID'))}/reply",
+                                            "Method": "POST",
+                                            "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                            "ContentType": "application/json",
+                                            "Body": "@concat('{\"message\": {\"toRecipients\": [{\"emailAddress\": {\"address\": \"ossgenai.im@pg.com\"}}], \"ccRecipients\": [], \"bccRecipients\": []}, \"comment\": \"', outputs('GENERAL_-_00_Rule_Reply_Comment'), '\"}')"
+                                          },
+                                          "host": {
+                                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                            "connectionName": "shared_office365",
+                                            "operationId": "HttpRequest"
+                                          },
+                                          "authentication": "@parameters('$authentication')"
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            "expression": {
+                              "and": [
+                                {
+                                  "greater": [
+                                    "@length(body('GENERAL_-_00_Check_Already_Routed_By_ConversationId')?['value'])",
+                                    0
+                                  ]
+                                }
+                              ]
+                            },
+                            "type": "If"
+                          }
+                        }
+                      },
+                      "expression": {
+                        "and": [
+                          {
+                            "less": [
+                              "@ticks(coalesce(triggerOutputs()?['body/receivedDateTime'], triggerOutputs()?['body/DateTimeReceived'], utcNow()))",
+                              "@ticks(addMinutes(utcNow(), -1440))"
+                            ]
+                          }
+                        ]
+                      },
+                      "type": "If"
+                    }
+                  }
+                },
+                "expression": {
+                  "or": [
+                    {
+                      "contains": [
+                        "@toLower(outputs('GENERAL_-_00_Compose_Wakefern_Block_Text'))",
+                        "rpa email request to changes"
+                      ]
+                    },
+                    {
+                      "contains": [
+                        "@toLower(outputs('GENERAL_-_00_Compose_Wakefern_Block_Text'))",
+                        "final state results"
+                      ]
+                    },
+                    {
+                      "contains": [
+                        "@toLower(outputs('GENERAL_-_00_Compose_Wakefern_Block_Text'))",
+                        "for routing use workflow=na_om_data_agent"
+                      ]
+                    },
+                    {
+                      "contains": [
+                        "@toLower(outputs('GENERAL_-_00_Compose_Wakefern_Block_Text'))",
+                        "awg-flow-id:"
+                      ]
+                    },
+                    {
+                      "contains": [
+                        "@toLower(outputs('GENERAL_-_00_Compose_Wakefern_Block_Text'))",
+                        "awg-step:"
+                      ]
+                    },
+                    {
+                      "contains": [
+                        "@toLower(outputs('GENERAL_-_00_Compose_Wakefern_Block_Text'))",
+                        "email not found for"
+                      ]
+                    },
+                    {
+                      "contains": [
+                        "@toLower(outputs('GENERAL_-_00_Compose_Wakefern_Block_Text'))",
+                        "process has completed execution"
+                      ]
+                    },
+                    {
+                      "contains": [
+                        "@toLower(outputs('GENERAL_-_00_Compose_Wakefern_Block_Text'))",
+                        "no unread emails found"
+                      ]
+                    },
+                    {
+                      "contains": [
+                        "@toLower(outputs('GENERAL_-_00_Compose_Wakefern_Block_Text'))",
+                        "please do not respond directly"
+                      ]
+                    },
+                    {
+                      "contains": [
+                        "@toLower(outputs('GENERAL_-_00_Compose_Wakefern_Block_Text'))",
+                        "system-generated email"
+                      ]
+                    }
+                  ]
+                },
+                "type": "If"
+              }
+            }
+          },
+          "expression": {
+            "or": [
+              {
+                "contains": [
+                  "@toLower(coalesce(triggerOutputs()?['body/subject'], ''))",
+                  "awg - ship with pos repot"
+                ]
+              },
+              {
+                "contains": [
+                  "@toLower(coalesce(triggerOutputs()?['body/subject'], ''))",
+                  "awg - ship with pos report"
+                ]
+              }
+            ]
+          },
+          "type": "If"
+        }
+      },
+      "outputs": {}
+    },
+    "templateName": null
+  },
+  "schemaVersion": "1.0.0.0"
+}

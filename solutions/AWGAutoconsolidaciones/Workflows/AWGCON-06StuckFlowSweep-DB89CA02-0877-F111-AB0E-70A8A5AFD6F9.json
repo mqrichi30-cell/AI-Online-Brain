@@ -1,0 +1,185 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_office365": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "awg_sharedoffice365_37d40"
+        },
+        "api": {
+          "name": "shared_office365"
+        }
+      },
+      "shared_sharepointonline": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "awg_sharedsharepointonline_6e67f"
+        },
+        "api": {
+          "name": "shared_sharepointonline"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        }
+      },
+      "triggers": {
+        "Recurrence_every_30_min": {
+          "recurrence": {
+            "frequency": "Minute",
+            "interval": 30
+          },
+          "evaluatedRecurrence": {
+            "frequency": "Minute",
+            "interval": 30
+          },
+          "type": "Recurrence"
+        }
+      },
+      "actions": {
+        "Compose_Cutoff_5h": {
+          "runAfter": {},
+          "type": "Compose",
+          "inputs": "@addHours(utcNow(),-5)"
+        },
+        "Get_Completed_Items": {
+          "runAfter": {
+            "Apply_to_each_Stuck": [
+              "Succeeded"
+            ]
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+              "table": "70ed8abc-c524-4142-9d8a-86f70ced426c",
+              "$filter": "Phase eq '06-Consolidated'",
+              "$top": 200
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "connectionName": "shared_sharepointonline",
+              "operationId": "GetItems"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "Apply_to_each_Completed": {
+          "foreach": "@outputs('Get_Completed_Items')?['body/value']",
+          "actions": {
+            "Delete_Completed_Row": {
+              "runAfter": {},
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+                  "table": "70ed8abc-c524-4142-9d8a-86f70ced426c",
+                  "id": "@item()?['ID']"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                  "connectionName": "shared_sharepointonline",
+                  "operationId": "DeleteItem"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            }
+          },
+          "runAfter": {
+            "Get_Completed_Items": [
+              "Succeeded"
+            ]
+          },
+          "type": "Foreach"
+        },
+        "Get_Stuck_Items": {
+          "runAfter": {
+            "Compose_Cutoff_5h": [
+              "Succeeded"
+            ]
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+              "table": "70ed8abc-c524-4142-9d8a-86f70ced426c",
+              "$filter": "(Phase eq '00-RouterClassified' or Phase eq '01-IntakeSent' or Phase eq '02-ConsolTableRcvd' or Phase eq '03-RDDRequestSent' or Phase eq '05-FullTableRequestSent') and Status ne 'Pending 10 Days Out' and PhaseSince lt '@{outputs('Compose_Cutoff_5h')}'",
+              "$top": 100
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "connectionName": "shared_sharepointonline",
+              "operationId": "GetItems"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "Apply_to_each_Stuck": {
+          "foreach": "@outputs('Get_Stuck_Items')?['body/value']",
+          "actions": {
+            "Send_Alert_Email": {
+              "runAfter": {},
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "emailMessage/To": "pgcustservw2.im@pg.com",
+                  "emailMessage/Subject": "@concat('[AWG CON] Flujo de consolidacion atascado (+5h) - Fase ', coalesce(item()?['Phase'],''), ' - PO ', coalesce(item()?['POs'],'sin PO'), ' - ', coalesce(item()?['OriginalSubject'],''))",
+                  "emailMessage/Body": "<p>Un flujo de consolidacion lleva mas de 5 horas sin avanzar y se movera a revision manual.</p><p><strong>FlowId:</strong> @{item()?['FlowId']}<br><strong>Fase actual:</strong> @{item()?['Phase']}<br><strong>Sin avanzar desde:</strong> @{item()?['PhaseSince']}<br><strong>POs:</strong> @{item()?['POs']}<br><strong>Asunto original:</strong> @{item()?['OriginalSubject']}<br><strong>OriginalConversationId:</strong> @{item()?['OriginalConversationId']}</p><p>Esta fila se marco como <strong>99-ManualReview</strong>. Revisar manualmente.</p>",
+                  "emailMessage/Importance": "Normal"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "connectionName": "shared_office365",
+                  "operationId": "SendEmailV2"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Mark_Manual_Review": {
+              "runAfter": {
+                "Send_Alert_Email": [
+                  "Succeeded"
+                ]
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+                  "table": "70ed8abc-c524-4142-9d8a-86f70ced426c",
+                  "id": "@item()?['ID']",
+                  "item/Phase": "99-ManualReview",
+                  "item/PhaseSince": "@utcNow()"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                  "connectionName": "shared_sharepointonline",
+                  "operationId": "PatchItem"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            }
+          },
+          "runAfter": {
+            "Get_Stuck_Items": [
+              "Succeeded"
+            ]
+          },
+          "type": "Foreach"
+        }
+      },
+      "outputs": {}
+    },
+    "templateName": null
+  },
+  "schemaVersion": "1.0.0.0"
+}

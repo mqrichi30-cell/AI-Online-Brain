@@ -1,0 +1,709 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_office365": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "awg_sharedoffice365_37d40"
+        },
+        "api": {
+          "name": "shared_office365"
+        }
+      },
+      "shared_sharepointonline": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "awg_sharedsharepointonline_6e67f"
+        },
+        "api": {
+          "name": "shared_sharepointonline"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        }
+      },
+      "triggers": {
+        "When_a_new_email_arrives_(V3)": {
+          "splitOn": "@triggerOutputs()?['body/value']",
+          "metadata": {
+            "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAAiDm4CAAA=": "AWG Complete",
+            "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAYFina4AAA=": "Mar\u00edn, Cristhofer - AWG + Wakefern",
+            "operationMetadataId": "3992149e-7300-45f9-870a-bdc5148ef9ad"
+          },
+          "type": "OpenApiConnectionNotification",
+          "inputs": {
+            "parameters": {
+              "includeAttachments": false,
+              "fetchOnlyWithAttachment": false,
+              "folderPath": "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAYFina4AAA="
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+              "connectionName": "shared_office365",
+              "operationId": "OnNewEmailV3"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        }
+      },
+      "actions": {
+        "Condition": {
+          "actions": {
+            "Apply_to_each": {
+              "foreach": "@outputs('TableRows')",
+              "actions": {
+                "CurrentCollective": {
+                  "metadata": {
+                    "operationMetadataId": "322a2a17-06c0-439e-bbe4-ec1f2d6b7bd0"
+                  },
+                  "type": "Compose",
+                  "inputs": "@trim(\r\n  replace(\r\n    replace(\r\n      replace(\r\n        last(\r\n          split(\r\n            split(item(),'</td>')[5],\r\n            '<span style=\"font-family:&quot;Arial&quot;,sans-serif\">'\r\n          )\r\n        ),\r\n        '</span></p>',\r\n        ''\r\n      ),\r\n      '&nbsp;',\r\n      ''\r\n    ),\r\n    '<br>',\r\n    ''\r\n  )\r\n)"
+                },
+                "Condition_1": {
+                  "actions": {
+                    "Set_variable": {
+                      "metadata": {
+                        "operationMetadataId": "409ba9a2-41d0-46e2-b5e3-ff5a25d7303f"
+                      },
+                      "type": "SetVariable",
+                      "inputs": {
+                        "name": "FirstCollective",
+                        "value": "@outputs('CurrentCollective')"
+                      }
+                    }
+                  },
+                  "runAfter": {
+                    "Check_Collective_Blank": [
+                      "Succeeded"
+                    ]
+                  },
+                  "else": {
+                    "actions": {
+                      "Condition_2": {
+                        "actions": {
+                          "Set_variable_1": {
+                            "metadata": {
+                              "operationMetadataId": "3ce9f8e8-a997-42e9-84a9-1402c3b9ef67"
+                            },
+                            "type": "SetVariable",
+                            "inputs": {
+                              "name": "CollectiveMismatch",
+                              "value": true
+                            }
+                          }
+                        },
+                        "else": {
+                          "actions": {}
+                        },
+                        "expression": {
+                          "and": [
+                            {
+                              "not": {
+                                "equals": [
+                                  "@outputs('CurrentCollective')",
+                                  "@variables('FirstCollective')"
+                                ]
+                              }
+                            }
+                          ]
+                        },
+                        "metadata": {
+                          "operationMetadataId": "1fd651a5-98c7-4f35-a20b-8aa0aa720b5e"
+                        },
+                        "type": "If"
+                      }
+                    }
+                  },
+                  "expression": {
+                    "and": [
+                      {
+                        "equals": [
+                          "@empty(variables('FirstCollective'))",
+                          "@true"
+                        ]
+                      }
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "9eaf3e62-41a9-42f0-b648-ac6e9b4d004f"
+                  },
+                  "type": "If"
+                },
+                "Check_Collective_Blank": {
+                  "actions": {
+                    "Set_variable_2": {
+                      "metadata": {
+                        "operationMetadataId": "0ff3276a-cd4d-4fd2-bdd0-08d1c2440420"
+                      },
+                      "type": "SetVariable",
+                      "inputs": {
+                        "name": "CollectiveBlankFound",
+                        "value": "@true"
+                      }
+                    }
+                  },
+                  "runAfter": {
+                    "CurrentCollective": [
+                      "Succeeded"
+                    ]
+                  },
+                  "else": {
+                    "actions": {}
+                  },
+                  "expression": {
+                    "equals": [
+                      "@empty(outputs('CurrentCollective'))",
+                      "@true"
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "8cf668ec-c9ad-4bca-a8fe-ba217ca39ca2"
+                  },
+                  "type": "If"
+                }
+              },
+              "runAfter": {
+                "FinalToText": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "90eee88d-3cac-42b2-9eb6-ed8e18cf1757"
+              },
+              "type": "Foreach"
+            },
+            "Condition_3": {
+              "actions": {
+                "DEBUG_MessageId": {
+                  "metadata": {
+                    "operationMetadataId": "1541ec01-1703-49ec-91e7-93882fdf6b1b"
+                  },
+                  "type": "Compose",
+                  "inputs": "@triggerOutputs()?['body/id']"
+                },
+                "DEBUG_Recipients": {
+                  "runAfter": {
+                    "DEBUG_MessageId": [
+                      "Succeeded"
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "24284835-42a4-4135-aa8e-5ceada2d1d60"
+                  },
+                  "type": "Compose",
+                  "inputs": "@concat('TO=', outputs('OriginalSender'), ' | CC=', outputs('FinalCc'))"
+                },
+                "Send_an_email_(V2)": {
+                  "runAfter": {
+                    "DEBUG_Recipients": [
+                      "Succeeded"
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "b88db73b-9203-4246-8f2f-f673193894f1"
+                  },
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "parameters": {
+                      "emailMessage/To": "@trim(\r\n  first(\r\n    split(\r\n      last(\r\n        split(\r\n          outputs('OriginalSender'),\r\n          '&lt;'\r\n        )\r\n      ),\r\n      '&gt;'\r\n    )\r\n  )\r\n)",
+                      "emailMessage/Subject": "@concat('RE: ', triggerOutputs()?['body/subject'])",
+                      "emailMessage/Body": "<p class=\"editor-paragraph\">Hello team,<br><br>The following POs has been consolidated as requested:</p><br><p class=\"editor-paragraph\">@{outputs('HtmlTable')}</p><br><p class=\"editor-paragraph\">Regards,<br><br>pgcustservw2.im@pg.com<br>NA Order Management | Regional</p>",
+                      "emailMessage/Cc": "@outputs('FinalCc')",
+                      "emailMessage/Importance": "Normal"
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                      "connectionName": "shared_office365",
+                      "operationId": "SendEmailV2"
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  }
+                },
+                "AWG_-_CON_-_05_Advance_Phase": {
+                  "runAfter": {
+                    "Send_an_email_(V2)": [
+                      "Succeeded"
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "a1b2c3d4-0501-4001-8001-000000000003"
+                  },
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "parameters": {
+                      "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+                      "table": "70ed8abc-c524-4142-9d8a-86f70ced426c",
+                      "id": "@first(body('AWG_-_CON_-_05_Get_Tracking_Item')?['value'])?['ID']",
+                      "item/Phase": "06-Consolidated",
+                      "item/PhaseSince": "@utcNow()"
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                      "connectionName": "shared_sharepointonline",
+                      "operationId": "PatchItem"
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  }
+                }
+              },
+              "runAfter": {
+                "Apply_to_each": [
+                  "Succeeded"
+                ]
+              },
+              "else": {
+                "actions": {
+                  "Send_an_email_(V2)_1": {
+                    "metadata": {
+                      "operationMetadataId": "e0f53b2d-e503-44e9-8f88-69d0b05579e4"
+                    },
+                    "type": "OpenApiConnection",
+                    "inputs": {
+                      "parameters": {
+                        "emailMessage/To": "pgcustservw2.im@pg.com",
+                        "emailMessage/Subject": "@concat('RE: ', triggerOutputs()?['body/subject'])",
+                        "emailMessage/Body": "<p class=\"editor-paragraph\">Hello team,<br><br>This consolidation is already within the 10-day window and needs to be reviewed and worked manually.<br><br>Please validate the order details and proceed with the manual process as needed.</p><br><br><p class=\"editor-paragraph\">@{outputs('HtmlTable')}</p><br><p class=\"editor-paragraph\">Regards,<br><br>pgcustservw2.im@pg.com<br>NA Order Management | Regional</p>",
+                        "emailMessage/Importance": "Normal"
+                      },
+                      "host": {
+                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                        "connectionName": "shared_office365",
+                        "operationId": "SendEmailV2"
+                      },
+                      "authentication": "@parameters('$authentication')"
+                    }
+                  }
+                }
+              },
+              "expression": {
+                "or": [
+                  {
+                    "equals": [
+                      "@variables('CollectiveBlankFound')",
+                      "@true"
+                    ]
+                  },
+                  {
+                    "equals": [
+                      "@variables('CollectiveMismatch')",
+                      "@true"
+                    ]
+                  }
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "08c724bc-3c54-4107-b04f-174f35b0c100"
+              },
+              "type": "If"
+            },
+            "EmailBody": {
+              "metadata": {
+                "operationMetadataId": "d549626a-b6a2-445a-b894-b60753e71486"
+              },
+              "type": "Compose",
+              "inputs": "@triggerOutputs()?['body/body']"
+            },
+            "HtmlTable": {
+              "runAfter": {
+                "EmailBody": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "37ed4b06-c493-4576-8358-39f97333a2e3"
+              },
+              "type": "Compose",
+              "inputs": "@concat(\r\n  '<table',\r\n  split(\r\n    split(\r\n      split(outputs('EmailBody'),'Formatted Table')[1],\r\n      '<table'\r\n    )[1],\r\n    '</table>'\r\n  )[0],\r\n  '</table>'\r\n)"
+            },
+            "TableRows": {
+              "runAfter": {
+                "HtmlTable": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "bb4979af-f67c-4bfe-845b-5226f6c683a1"
+              },
+              "type": "Compose",
+              "inputs": "@skip(\r\n  split(\r\n    split(\r\n      split(outputs('HtmlTable'),'<tbody>')[1],\r\n      '</tbody>'\r\n    )[0],\r\n    '<tr>'\r\n  ),\r\n  1\r\n)"
+            },
+            "OriginalHeaderBlock": {
+              "runAfter": {
+                "TableRows": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "ebc461f4-d559-40d0-9c79-58eef763b05a"
+              },
+              "type": "Compose",
+              "inputs": "@last(split(triggerOutputs()?['body/body'], '<b>From:</b>'))"
+            },
+            "OriginalFromLine": {
+              "runAfter": {
+                "OriginalHeaderBlock": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "24e9c1d4-1a04-4a29-9c35-637dc1f44026"
+              },
+              "type": "Compose",
+              "inputs": "@first(split(outputs('OriginalHeaderBlock'), '<br><b>Sent:</b>'))"
+            },
+            "OriginalSender": {
+              "runAfter": {
+                "OriginalFromLine": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "2a3890ca-f66e-49cd-b5d4-895539c36bc3"
+              },
+              "type": "Compose",
+              "inputs": "@first(\r\n  split(\r\n    first(\r\n      skip(\r\n        split(\r\n          last(\r\n            split(\r\n              first(split(triggerOutputs()?['body/body'], '[EXTERNAL]')),\r\n              'From:</span></b>'\r\n            )\r\n          ),\r\n          'mailto:'\r\n        ),\r\n        1\r\n      )\r\n    ),\r\n    '\"'\r\n  )\r\n)"
+            },
+            "OriginalTo": {
+              "runAfter": {
+                "OriginalSender": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "1ffa0c13-cb39-4a08-ba59-a0c117ce1a26"
+              },
+              "type": "Compose",
+              "inputs": "@first(\r\n  split(\r\n    last(split(triggerOutputs()?['body/body'], '<b>To:</b>')),\r\n    '<br><b>Subject:</b>'\r\n  )\r\n)"
+            },
+            "FinalToText": {
+              "runAfter": {
+                "FinalCc": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "29253dd3-948d-40b0-b49e-14eb517e414b"
+              },
+              "type": "Compose",
+              "inputs": "@outputs('OriginalSender')"
+            },
+            "Apply_to_each_1": {
+              "foreach": "@split(outputs('OriginalTo'), ';')",
+              "actions": {
+                "CurrentEmailFromTo": {
+                  "metadata": {
+                    "operationMetadataId": "c230e2d7-6970-47a4-ba77-9d392d80798e"
+                  },
+                  "type": "Compose",
+                  "inputs": "@if(\r\n  contains(item(), 'mailto:'),\r\n  first(split(last(split(item(), 'mailto:')), '\"')),\r\n  if(\r\n    contains(item(), '&lt;'),\r\n    first(split(last(split(item(), '&lt;')), '&gt;')),\r\n    trim(item())\r\n  )\r\n)"
+                },
+                "Condition_4": {
+                  "actions": {
+                    "Append_to_string_variable": {
+                      "metadata": {
+                        "operationMetadataId": "0037f910-9984-468a-9827-8093b17b2d67"
+                      },
+                      "type": "AppendToStringVariable",
+                      "inputs": {
+                        "name": "FinalCcDynamic",
+                        "value": "@{outputs('CurrentEmailFromTo')};"
+                      }
+                    }
+                  },
+                  "runAfter": {
+                    "CurrentEmailFromTo": [
+                      "Succeeded"
+                    ]
+                  },
+                  "else": {
+                    "actions": {}
+                  },
+                  "expression": {
+                    "and": [
+                      {
+                        "equals": [
+                          "@and(\r\n  contains(outputs('CurrentEmailFromTo'), '@'),\r\n  not(equals(outputs('CurrentEmailFromTo'), 'pgcustservw2.im@pg.com')),\r\n  not(equals(outputs('CurrentEmailFromTo'), outputs('OriginalSender')))\r\n)",
+                          "@true"
+                        ]
+                      }
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "3f015fc1-03a8-4a22-b286-072a5ba58a42"
+                  },
+                  "type": "If"
+                }
+              },
+              "runAfter": {
+                "OriginalTo": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "29098835-4570-4642-aa90-4b711777462c"
+              },
+              "type": "Foreach"
+            },
+            "FinalCc": {
+              "runAfter": {
+                "Apply_to_each_1": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "b1790fd4-7539-4d84-aec3-104d1271cb8d"
+              },
+              "type": "Compose",
+              "inputs": "@replace(\r\n  replace(\r\n    replace(\r\n      variables('FinalCcDynamic'),\r\n      'pgcustservw2.im@pg.com;',\r\n      ''\r\n    ),\r\n    ';;',\r\n    ';'\r\n  ),\r\n  ' ',\r\n  ''\r\n)"
+            },
+            "Set_Category_OssGenAI_Email": {
+              "runAfter": {
+                "Condition_3": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "e8293dbe-7166-4aea-b5a9-88c21a8c2044"
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "Uri": "https://graph.microsoft.com/v1.0/me/messages/@{triggerOutputs()?['body/id']}",
+                  "Method": "PATCH",
+                  "CustomHeader1": "Content-Type: application/json",
+                  "Body": "{\n  \"categories\": [\n    \"AWG OSSGenAI Processed\"\n  ]\n}",
+                  "ContentType": "application/json"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "connectionName": "shared_office365",
+                  "operationId": "HttpRequest"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Move_OssGenAI_Email": {
+              "runAfter": {
+                "Set_Category_OssGenAI_Email": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAAiDm4CAAA=": "AWG Complete",
+                "operationMetadataId": "f4212430-29b0-4295-b74c-155af6f8569e"
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "messageId": "@triggerOutputs()?['body/id']",
+                  "folderPath": "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAAiDm4CAAA="
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "connectionName": "shared_office365",
+                  "operationId": "MoveV2"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            }
+          },
+          "runAfter": {
+            "Initialize_variable_3": [
+              "Succeeded"
+            ]
+          },
+          "else": {
+            "actions": {}
+          },
+          "expression": {
+            "and": [
+              {
+                "contains": [
+                  "@toLower(coalesce(triggerOutputs()?['body/body'],''))",
+                  "@toLower('Formatted Table')"
+                ]
+              },
+              {
+                "contains": [
+                  "@toLower(coalesce(triggerOutputs()?['body/body'],''))",
+                  "@toLower('PO #')"
+                ]
+              },
+              {
+                "contains": [
+                  "@toLower(coalesce(triggerOutputs()?['body/body'],''))",
+                  "@toLower('SO #')"
+                ]
+              },
+              {
+                "contains": [
+                  "@toLower(coalesce(triggerOutputs()?['body/body'],''))",
+                  "@toLower('Customer name')"
+                ]
+              },
+              {
+                "contains": [
+                  "@toLower(coalesce(triggerOutputs()?['body/body'],''))",
+                  "@toLower('RDD')"
+                ]
+              },
+              {
+                "contains": [
+                  "@toLower(coalesce(triggerOutputs()?['body/body'],''))",
+                  "@toLower('Collective Number')"
+                ]
+              }
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "d4712ca8-1179-4b7d-98ce-e6133508cdda"
+          },
+          "type": "If"
+        },
+        "AWG_-_CON_-_05_Get_Tracking_Item": {
+          "runAfter": {},
+          "metadata": {
+            "operationMetadataId": "a1b2c3d4-0501-4001-8001-000000000001"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+              "table": "70ed8abc-c524-4142-9d8a-86f70ced426c",
+              "$filter": "OriginalConversationId eq '@{triggerOutputs()?['body/conversationId']}' and Phase eq '05-FullTableRequestSent'",
+              "$top": 1
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "connectionName": "shared_sharepointonline",
+              "operationId": "GetItems"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "AWG_-_CON_-_05_Guard_Not_In_Flow": {
+          "actions": {
+            "Terminate_Not_Tracked": {
+              "type": "Terminate",
+              "inputs": {
+                "runStatus": "Cancelled"
+              }
+            }
+          },
+          "runAfter": {
+            "AWG_-_CON_-_05_Get_Tracking_Item": [
+              "Succeeded"
+            ]
+          },
+          "else": {
+            "actions": {}
+          },
+          "expression": {
+            "and": [
+              {
+                "equals": [
+                  "@length(body('AWG_-_CON_-_05_Get_Tracking_Item')?['value'])",
+                  0
+                ]
+              }
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "a1b2c3d4-0501-4001-8001-000000000002"
+          },
+          "type": "If"
+        },
+        "Initialize_variable": {
+          "runAfter": {
+            "AWG_-_CON_-_05_Guard_Not_In_Flow": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "31d135d5-a334-48cd-bbcc-32e90e78c2de"
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "FirstCollective",
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "Initialize_variable_1": {
+          "runAfter": {
+            "Initialize_variable": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "87312541-e2ac-4330-9968-7525fcda63d0"
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "CollectiveMismatch",
+                "type": "boolean"
+              }
+            ]
+          }
+        },
+        "Initialize_variable_2": {
+          "runAfter": {
+            "Initialize_variable_1": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "19feb895-55e3-4d5b-b536-cb464c2599b3"
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "FinalCcDynamic",
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "Initialize_variable_3": {
+          "runAfter": {
+            "Initialize_variable_2": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "bc90ddb0-0d65-4ec7-bba7-f1761f7e020c"
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "CollectiveBlankFound",
+                "type": "boolean"
+              }
+            ]
+          }
+        }
+      },
+      "outputs": {}
+    },
+    "templateName": null
+  },
+  "schemaVersion": "1.0.0.0"
+}
