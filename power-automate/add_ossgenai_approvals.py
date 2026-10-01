@@ -413,3 +413,15 @@ for send_name, first_name, suffix, step_label, note in [
     )
 save(path, doc)
 print("ok")
+
+# ============================================================================
+# Trigger concurrency: GENERAL-00 and CON-03 had concurrency runs=1. With a run
+# waiting on an approval (up to 24h), every new email queued behind it and
+# Flow checker flagged "Trigger concurrency throttling". Remove it.
+# ============================================================================
+for prefix in ("GENERAL-Classifier-00", "AWG-Consolidation-03"):
+    path, doc = load(prefix)
+    for trig in doc["properties"]["definition"]["triggers"].values():
+        trig.pop("runtimeConfiguration", None)
+    save(path, doc)
+print("concurrency removed")

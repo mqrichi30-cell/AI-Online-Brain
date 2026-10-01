@@ -75,11 +75,6 @@
               "operationId": "SharedMailboxOnNewEmailV2",
               "connectionName": "shared_office365"
             }
-          },
-          "runtimeConfiguration": {
-            "concurrency": {
-              "runs": 1
-            }
           }
         }
       },

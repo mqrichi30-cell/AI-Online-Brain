@@ -55,12 +55,7 @@
             {
               "expression": "@and(not(contains(toLower(string(coalesce(triggerOutputs()?['body/from'],''))),'ossgenai.im@pg.com')),not(contains(toLower(string(coalesce(triggerOutputs()?['body/from'],''))),'nacsoshared.im@pg.com')),not(contains(toLower(string(coalesce(triggerOutputs()?['body/from'],''))),'nacsodigitization.im@pg.com')),not(contains(toLower(string(coalesce(triggerOutputs()?['body/from'],''))),'doom.im@pg.com')),not(contains(toLower(string(coalesce(triggerOutputs()?['body/from'],''))),'pgcustservw2.im@pg.com')),not(contains(toLower(coalesce(triggerOutputs()?['body/subject'],'')),'awg-flow-id:')),not(contains(toLower(coalesce(triggerOutputs()?['body/subject'],'')),'awg-step:')),not(contains(toLower(coalesce(triggerOutputs()?['body/subject'],'')),'[awg con]')),not(contains(toLower(coalesce(triggerOutputs()?['body/subject'],'')),'rdd not readable')),not(contains(toLower(coalesce(triggerOutputs()?['body/subject'],'')),'pending 10 days out')),not(contains(toLower(string(coalesce(triggerOutputs()?['body/categories'],''))),'no match')),not(contains(toLower(coalesce(triggerOutputs()?['body/subject'],'')),'flujo de consolidacion atascado')))"
             }
-          ],
-          "runtimeConfiguration": {
-            "concurrency": {
-              "runs": 1
-            }
-          }
+          ]
         }
       },
       "actions": {

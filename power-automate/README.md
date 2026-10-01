@@ -1,7 +1,7 @@
 # AWG Autoconsolidaciones (Power Automate)
 
 - `AWGAutoconsolidaciones/` – solución desempaquetada (fuente).
-- `AWGAutoconsolidaciones_1_0_0_35.zip` – solución lista para importar.
+- `AWGAutoconsolidaciones_1_0_0_36.zip` – solución lista para importar.
 - `add_ossgenai_approvals.py` – script que agregó la aprobación (se corre sobre la 1.0.0.34).
 
 ## Aprobación antes de enviar a OSSGenAI (1.0.0.35)
@@ -26,3 +26,13 @@ CON - 02 y CON - 05 no envían correos a OSSGenAI, no cambiaron.
 
 La solicitud se envía al buzón de la conexión de Outlook del flujo (`GET /me`).
 Para mandarla a otra dirección, cambia el campo **To** de la acción `*_Aprobacion_Enviar_Solicitud`.
+
+## Sin control de concurrencia en los triggers (1.0.0.36)
+
+GENERAL - 00 y CON - 03 tenían *Concurrency Control* = 1 en el trigger. Con la aprobación,
+una ejecución puede quedar esperando hasta 24 h y todos los correos nuevos se encolaban
+detrás (Flow checker: "Trigger concurrency throttling detected"). Se quitó el límite:
+cada correo corre en paralelo y genera su propia solicitud de aprobación.
+
+Si después de importar el Flow checker sigue mostrando el aviso, abre el trigger del flujo →
+**Settings** → apaga **Concurrency Control** → **Save**.
