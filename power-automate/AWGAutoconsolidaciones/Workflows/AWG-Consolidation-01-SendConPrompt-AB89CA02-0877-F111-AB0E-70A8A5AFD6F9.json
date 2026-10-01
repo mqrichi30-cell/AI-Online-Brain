@@ -381,7 +381,7 @@
                           "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Resolved_Current_OSS_Immutable_ID'))}/reply",
                           "Method": "POST",
                           "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
-                          "Body": "{\n  \"message\": {\n    \"toRecipients\": [\n      {\n        \"emailAddress\": {\n          \"address\": \"ossgenai.im@pg.com\"\n        }\n      }\n    ],\n    \"ccRecipients\": [],\n    \"bccRecipients\": []\n  },\n  \"comment\": \"FOR ROUTING USE WORKFLOW=na_om_data_agent (AskOM)<br><br>\\n<strong>IMPORTANT - SAME THREAD READ SCOPE:</strong> This is a direct reply inside the existing Outlook conversation, not a forward. Use the latest actual customer email available in the reply history below this prompt. Do not use the subject alone. Ignore system-generated status/error emails, process completion emails, signatures, disclaimers, and older unrelated replies.<br><br>\\n<strong>Mandatory validation before extracting:</strong><br>\\nOnly continue if the actual customer email contains BOTH:<br>\\n1) a real request to ride-with, ship-with, consolidate, attach/load with another PO, or make one PO ride with another PO; and<br>\\n2) at least one explicit PO number tied to PO context such as PO, PO#, PO #, purchase order, order, main PO, rider PO, or a PO table/list.<br><br>\\nIf the email is a system/status/error notification, or if either requirement is missing, respond exactly: Is not a consolidation<br><br>\\nIf it passes validation, extract the consolidation details from the original customer email in this same conversation.<br><br>\\nReturn a table with exactly 2 columns: Truck # and PO #<br>\\nEach row must contain exactly one PO only. Never place multiple PO numbers in the same PO # cell. If multiple POs belong to the same truck, create one separate row per PO and repeat the same Truck # value on each row.<br>\\nRemove all internal spaces from every PO number (e.g. \\\"07 291073\\\" → \\\"07291073\\\"). Output PO numbers as a single unbroken string with no spaces.<br>\\nUse Truck #1 as standard. If the customer sends more than one consolidation, use Truck #2, Truck #3, etc.<br>\\n@{replace(variables('SignatureHtml'),'\"','\\\"')}\\n<p style=\\\"font-size:1px;color:#ffffff;line-height:1px\\\">AWG-FLOW-ID: @{outputs('Compose_Correlation_FlowId')} | AWG-STEP: CONSOLIDATION_CONFIRM</p>\"\n}",
+                          "Body": "@outputs('AWG_-_CON_-_01_Compose_OSSGenAI_Request')",
                           "ContentType": "application/json"
                         },
                         "host": {
@@ -389,6 +389,11 @@
                           "operationId": "HttpRequest",
                           "connectionName": "shared_office365"
                         }
+                      },
+                      "runAfter": {
+                        "AWG_-_CON_-_01_Aprobacion_Guard_Aprobado": [
+                          "Succeeded"
+                        ]
                       }
                     },
                     "DEBUG_-_Consolidation_Reply_Sent_Same_Conversation": {
@@ -402,6 +407,207 @@
                       },
                       "type": "Compose",
                       "inputs": "@concat('Replied to current OSS message instead of forwarding original. CurrentOSSId=', string(outputs('Compose_Resolved_Current_OSS_Immutable_ID')), ' | OriginalId=', string(outputs('Compose_Resolved_Original_Immutable_ID')), ' | FlowId=', string(outputs('Compose_Correlation_FlowId')))"
+                    },
+                    "AWG_-_CON_-_01_Compose_OSSGenAI_Request": {
+                      "runAfter": {},
+                      "type": "Compose",
+                      "inputs": {
+                        "message": {
+                          "toRecipients": [
+                            {
+                              "emailAddress": {
+                                "address": "ossgenai.im@pg.com"
+                              }
+                            }
+                          ],
+                          "ccRecipients": [],
+                          "bccRecipients": []
+                        },
+                        "comment": "FOR ROUTING USE WORKFLOW=na_om_data_agent (AskOM)<br><br>\n<strong>IMPORTANT - SAME THREAD READ SCOPE:</strong> This is a direct reply inside the existing Outlook conversation, not a forward. Use the latest actual customer email available in the reply history below this prompt. Do not use the subject alone. Ignore system-generated status/error emails, process completion emails, signatures, disclaimers, and older unrelated replies.<br><br>\n<strong>Mandatory validation before extracting:</strong><br>\nOnly continue if the actual customer email contains BOTH:<br>\n1) a real request to ride-with, ship-with, consolidate, attach/load with another PO, or make one PO ride with another PO; and<br>\n2) at least one explicit PO number tied to PO context such as PO, PO#, PO #, purchase order, order, main PO, rider PO, or a PO table/list.<br><br>\nIf the email is a system/status/error notification, or if either requirement is missing, respond exactly: Is not a consolidation<br><br>\nIf it passes validation, extract the consolidation details from the original customer email in this same conversation.<br><br>\nReturn a table with exactly 2 columns: Truck # and PO #<br>\nEach row must contain exactly one PO only. Never place multiple PO numbers in the same PO # cell. If multiple POs belong to the same truck, create one separate row per PO and repeat the same Truck # value on each row.<br>\nRemove all internal spaces from every PO number (e.g. \"07 291073\" → \"07291073\"). Output PO numbers as a single unbroken string with no spaces.<br>\nUse Truck #1 as standard. If the customer sends more than one consolidation, use Truck #2, Truck #3, etc.<br>\n@{variables('SignatureHtml')}\n<p style=\"font-size:1px;color:#ffffff;line-height:1px\">AWG-FLOW-ID: @{outputs('Compose_Correlation_FlowId')} | AWG-STEP: CONSOLIDATION_CONFIRM</p>"
+                      }
+                    },
+                    "AWG_-_CON_-_01_Aprobacion_Get_Aprobador": {
+                      "runAfter": {
+                        "AWG_-_CON_-_01_Compose_OSSGenAI_Request": [
+                          "Succeeded"
+                        ]
+                      },
+                      "type": "OpenApiConnection",
+                      "inputs": {
+                        "parameters": {
+                          "Uri": "https://graph.microsoft.com/v1.0/me?$select=mail,userPrincipalName",
+                          "Method": "GET"
+                        },
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                          "operationId": "HttpRequest",
+                          "connectionName": "shared_office365"
+                        }
+                      }
+                    },
+                    "AWG_-_CON_-_01_Aprobacion_Enviar_Solicitud": {
+                      "runAfter": {
+                        "AWG_-_CON_-_01_Aprobacion_Get_Aprobador": [
+                          "Succeeded"
+                        ]
+                      },
+                      "limit": {
+                        "timeout": "P1D"
+                      },
+                      "type": "OpenApiConnectionWebhook",
+                      "inputs": {
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                          "operationId": "SendMailWithOptions",
+                          "connectionName": "shared_office365"
+                        },
+                        "parameters": {
+                          "optionsEmailSubscription/Message/To": "@{coalesce(body('AWG_-_CON_-_01_Aprobacion_Get_Aprobador')?['mail'], body('AWG_-_CON_-_01_Aprobacion_Get_Aprobador')?['userPrincipalName'])}",
+                          "optionsEmailSubscription/Message/Subject": "[AWG CON] Aprobación requerida - envío a OSSGenAI - Consolidación 01 (extraer Truck # / PO #) - @{coalesce(outputs('Compose_Original_Subject_From_Router'), '')}",
+                          "optionsEmailSubscription/Message/Options": "Aprobar, Rechazar",
+                          "optionsEmailSubscription/Message/HeaderText": "Aprobación requerida: envío a OSSGenAI",
+                          "optionsEmailSubscription/Message/SelectionText": "¿Apruebas enviar este correo a OSSGenAI?",
+                          "optionsEmailSubscription/Message/Body": "<p>Hola,</p><p>El flujo <b>AWG - Consolidation - 01 - Send Con Prompt</b> está listo para enviar un correo a <b>ossgenai.im@pg.com</b> y necesita tu aprobación.</p><table cellpadding=\"4\" style=\"border-collapse:collapse;font-family:Segoe UI,Arial,sans-serif;font-size:13px\"><tr><td><b>Paso</b></td><td>Consolidación 01 (extraer Truck # / PO #)</td></tr><tr><td><b>Para</b></td><td>ossgenai.im@pg.com</td></tr><tr><td><b>Asunto del hilo</b></td><td>@{coalesce(outputs('Compose_Original_Subject_From_Router'), '')}</td></tr><tr><td><b>Tipo de envío</b></td><td>Respuesta en el mismo hilo (sobre la respuesta actual de OSSGenAI, incluye historial).</td></tr><tr><td><b>Correo original</b></td><td>Correo original del cliente (carpeta Email Route 00).</td></tr></table><p><b>Aprobar</b>: se envía el correo tal como aparece abajo y el flujo continúa.<br><b>Rechazar</b>: no se envía nada, no se notifica a nadie y el correo original vuelve como no leído a la carpeta <i>Marín, Cristhofer - AWG + Wakefern</i>.<br>Si no respondes en 24 horas se trata como <b>Rechazar</b>.</p><hr><p><b>Contenido que se enviará a OSSGenAI:</b></p><div style=\"border-left:4px solid #0078d4;padding:8px 12px;background:#f6f8fa\">@{outputs('AWG_-_CON_-_01_Compose_OSSGenAI_Request')?['comment']}</div>",
+                          "optionsEmailSubscription/Message/Importance": "High",
+                          "optionsEmailSubscription/Message/UseOnlyHTMLMessage": true,
+                          "optionsEmailSubscription/Message/HideHTMLMessage": false,
+                          "optionsEmailSubscription/Message/ShowHTMLConfirmationDialog": false
+                        }
+                      }
+                    },
+                    "AWG_-_CON_-_01_Aprobacion_Guard_Aprobado": {
+                      "runAfter": {
+                        "AWG_-_CON_-_01_Aprobacion_Enviar_Solicitud": [
+                          "Succeeded",
+                          "Failed",
+                          "TimedOut",
+                          "Skipped"
+                        ]
+                      },
+                      "type": "If",
+                      "expression": {
+                        "and": [
+                          {
+                            "equals": [
+                              "@actions('AWG_-_CON_-_01_Aprobacion_Enviar_Solicitud')?['status']",
+                              "Succeeded"
+                            ]
+                          },
+                          {
+                            "equals": [
+                              "@coalesce(actions('AWG_-_CON_-_01_Aprobacion_Enviar_Solicitud')?['outputs']?['body']?['SelectedOption'], '')",
+                              "Aprobar"
+                            ]
+                          }
+                        ]
+                      },
+                      "actions": {
+                        "AWG_-_CON_-_01_Aprobacion_Aprobado": {
+                          "runAfter": {},
+                          "type": "Compose",
+                          "inputs": "Aprobado por @{coalesce(actions('AWG_-_CON_-_01_Aprobacion_Enviar_Solicitud')?['outputs']?['body']?['UserEmailAddress'], '')}"
+                        }
+                      },
+                      "else": {
+                        "actions": {
+                          "AWG_-_CON_-_01_Aprobacion_Rechazo_Get_Original": {
+                            "runAfter": {},
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                              "parameters": {
+                                "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Resolved_Original_Immutable_ID'))}?$select=id,parentFolderId",
+                                "Method": "GET",
+                                "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                "ContentType": "application/json"
+                              },
+                              "host": {
+                                "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                "operationId": "HttpRequest",
+                                "connectionName": "shared_office365"
+                              }
+                            }
+                          },
+                          "AWG_-_CON_-_01_Aprobacion_Rechazo_Guard_Original_Fuera_De_Carpeta": {
+                            "runAfter": {
+                              "AWG_-_CON_-_01_Aprobacion_Rechazo_Get_Original": [
+                                "Succeeded"
+                              ]
+                            },
+                            "type": "If",
+                            "expression": {
+                              "and": [
+                                {
+                                  "not": {
+                                    "equals": [
+                                      "@body('AWG_-_CON_-_01_Aprobacion_Rechazo_Get_Original')?['parentFolderId']",
+                                      "@outputs('AWG_-_CON_-_01_Target_Client_Folder_Id')"
+                                    ]
+                                  }
+                                }
+                              ]
+                            },
+                            "actions": {
+                              "AWG_-_CON_-_01_Aprobacion_Rechazo_Move_Original_To_Client_Folder": {
+                                "type": "OpenApiConnection",
+                                "inputs": {
+                                  "parameters": {
+                                    "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Resolved_Original_Immutable_ID'))}/move",
+                                    "Method": "POST",
+                                    "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                    "Body": "@concat('{\"destinationId\":\"', outputs('AWG_-_CON_-_01_Target_Client_Folder_Id'), '\"}')",
+                                    "ContentType": "application/json"
+                                  },
+                                  "host": {
+                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                    "operationId": "HttpRequest",
+                                    "connectionName": "shared_office365"
+                                  }
+                                }
+                              }
+                            },
+                            "else": {
+                              "actions": {}
+                            }
+                          },
+                          "AWG_-_CON_-_01_Aprobacion_Rechazo_Mark_Original_Unread": {
+                            "runAfter": {
+                              "AWG_-_CON_-_01_Aprobacion_Rechazo_Guard_Original_Fuera_De_Carpeta": [
+                                "Succeeded",
+                                "Failed",
+                                "Skipped"
+                              ]
+                            },
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                              "parameters": {
+                                "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Resolved_Original_Immutable_ID'))}",
+                                "Method": "PATCH",
+                                "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                "Body": "{\"isRead\":false}",
+                                "ContentType": "application/json"
+                              },
+                              "host": {
+                                "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                "operationId": "HttpRequest",
+                                "connectionName": "shared_office365"
+                              }
+                            }
+                          },
+                          "AWG_-_CON_-_01_Aprobacion_Rechazo_Terminate": {
+                            "runAfter": {
+                              "AWG_-_CON_-_01_Aprobacion_Rechazo_Mark_Original_Unread": [
+                                "Succeeded",
+                                "Failed",
+                                "Skipped"
+                              ]
+                            },
+                            "type": "Terminate",
+                            "inputs": {
+                              "runStatus": "Cancelled"
+                            }
+                          }
+                        }
+                      }
                     }
                   },
                   "runAfter": {

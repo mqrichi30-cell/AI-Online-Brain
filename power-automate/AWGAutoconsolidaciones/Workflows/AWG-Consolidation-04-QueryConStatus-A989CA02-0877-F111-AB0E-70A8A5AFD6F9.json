@@ -563,7 +563,11 @@
                 "Condition": {
                   "actions": {
                     "Update_item_1": {
-                      "runAfter": {},
+                      "runAfter": {
+                        "AWG_-_CON_-_04_Aprobacion_Tabla_Guard_Aprobado": [
+                          "Succeeded"
+                        ]
+                      },
                       "metadata": {
                         "operationMetadataId": "e6811d2b-7c33-45ab-8cf7-ecee6d678cef"
                       },
@@ -606,11 +610,217 @@
                         "parameters": {
                           "Uri": "https://graph.microsoft.com/v1.0/users/pgcustservw2.im@pg.com/messages/@{encodeUriComponent(outputs('AWG_-_CON_-_04_Compose_Current_Immutable_ID'))}/reply",
                           "Method": "POST",
-                          "Body": "{\n  \"message\": {\n    \"toRecipients\": [\n      {\n        \"emailAddress\": {\n          \"address\": \"ossgenai.im@pg.com\"\n        }\n      }\n    ],\n    \"ccRecipients\": [],\n    \"bccRecipients\": []\n  },\n  \"comment\": \"FOR ROUTING USE WORKFLOW=na_om_data_agent (AskOM)<br><br>Extract Consolidation Orders<br><br>Step 1 – Review the Email Chain:<br><br>Read the entire forwarded email chain. Identify the orders that have to be consolidated or shipped together. Extract only the orders explicitly requested for consolidation and ignore any other PO or SO numbers.<br><br>Step 2 – Identify Filter Criteria:<br><br>Determine the customer who is requesting the consolidation. This customer’s name should match the Ship-to name on the order.<br><br>Ensure that the AWG Purchase Order (PO #) and the Sales Order (SO #) correspond correctly.<br><br>Step 3 – Data Extraction and RDD:<br><br>Retrieve the consolidation orders, extracting:<br><br>- AWG Purchase Order (PO #)<br><br>- Sales Order (SO #)<br><br>- Customer name (Ship-to Name)<br><br>- Requested Delivery Date (RDD)<br><br>- Collective Number<br><br>- Shipment Number<br><br>- Delivery Number<br><br>Important: The RDD must be taken from the customer request stated in the email, not from your data. If the customer provides multiple RDDs, assign each order the specific RDD stated for it. If the customer does not provide an RDD for an order, use the current RDD from your data. Shipment Number and Delivery Number may be left blank only if they do not exist for the PO.<br><br>Step 4 – Truck Assignment:<br><br>Include a column named Truck # that indicates which orders are meant to ship together. Use 1 for the first group, 2 for the second group, etc.<br><br>If two or more POs are meant to go in the same truck, they must all share the same Truck # value.<br><br>Step 5 – Final Table Format:<br><br>Create an HTML table with exactly these columns:<br><br>Truck #, PO #, SO #, Customer name, RDD, Collective Number, Shipment Number, Delivery Number<br><br>After these instructions, the forwarded email chain will follow.<br><br>@{replace(variables('SignatureHtml'),'\"','\\\"')}\"\n}",
+                          "Body": "@outputs('AWG_-_CON_-_04_Compose_OSSGenAI_Request_Tabla')",
                           "ContentType": "application/json",
                           "CustomHeader1": "Prefer: IdType=\"ImmutableId\""
                         },
                         "authentication": "@parameters('$authentication')"
+                      }
+                    },
+                    "AWG_-_CON_-_04_Compose_OSSGenAI_Request_Tabla": {
+                      "runAfter": {},
+                      "type": "Compose",
+                      "inputs": {
+                        "message": {
+                          "toRecipients": [
+                            {
+                              "emailAddress": {
+                                "address": "ossgenai.im@pg.com"
+                              }
+                            }
+                          ],
+                          "ccRecipients": [],
+                          "bccRecipients": []
+                        },
+                        "comment": "FOR ROUTING USE WORKFLOW=na_om_data_agent (AskOM)<br><br>Extract Consolidation Orders<br><br>Step 1 – Review the Email Chain:<br><br>Read the entire forwarded email chain. Identify the orders that have to be consolidated or shipped together. Extract only the orders explicitly requested for consolidation and ignore any other PO or SO numbers.<br><br>Step 2 – Identify Filter Criteria:<br><br>Determine the customer who is requesting the consolidation. This customer’s name should match the Ship-to name on the order.<br><br>Ensure that the AWG Purchase Order (PO #) and the Sales Order (SO #) correspond correctly.<br><br>Step 3 – Data Extraction and RDD:<br><br>Retrieve the consolidation orders, extracting:<br><br>- AWG Purchase Order (PO #)<br><br>- Sales Order (SO #)<br><br>- Customer name (Ship-to Name)<br><br>- Requested Delivery Date (RDD)<br><br>- Collective Number<br><br>- Shipment Number<br><br>- Delivery Number<br><br>Important: The RDD must be taken from the customer request stated in the email, not from your data. If the customer provides multiple RDDs, assign each order the specific RDD stated for it. If the customer does not provide an RDD for an order, use the current RDD from your data. Shipment Number and Delivery Number may be left blank only if they do not exist for the PO.<br><br>Step 4 – Truck Assignment:<br><br>Include a column named Truck # that indicates which orders are meant to ship together. Use 1 for the first group, 2 for the second group, etc.<br><br>If two or more POs are meant to go in the same truck, they must all share the same Truck # value.<br><br>Step 5 – Final Table Format:<br><br>Create an HTML table with exactly these columns:<br><br>Truck #, PO #, SO #, Customer name, RDD, Collective Number, Shipment Number, Delivery Number<br><br>After these instructions, the forwarded email chain will follow.<br><br>@{variables('SignatureHtml')}"
+                      }
+                    },
+                    "AWG_-_CON_-_04_Aprobacion_Tabla_Get_Aprobador": {
+                      "runAfter": {
+                        "AWG_-_CON_-_04_Compose_OSSGenAI_Request_Tabla": [
+                          "Succeeded"
+                        ]
+                      },
+                      "type": "OpenApiConnection",
+                      "inputs": {
+                        "parameters": {
+                          "Uri": "https://graph.microsoft.com/v1.0/me?$select=mail,userPrincipalName",
+                          "Method": "GET"
+                        },
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                          "operationId": "HttpRequest",
+                          "connectionName": "shared_office365"
+                        },
+                        "authentication": "@parameters('$authentication')"
+                      }
+                    },
+                    "AWG_-_CON_-_04_Aprobacion_Tabla_Enviar_Solicitud": {
+                      "runAfter": {
+                        "AWG_-_CON_-_04_Aprobacion_Tabla_Get_Aprobador": [
+                          "Succeeded"
+                        ]
+                      },
+                      "limit": {
+                        "timeout": "P1D"
+                      },
+                      "type": "OpenApiConnectionWebhook",
+                      "inputs": {
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                          "operationId": "SendMailWithOptions",
+                          "connectionName": "shared_office365"
+                        },
+                        "parameters": {
+                          "optionsEmailSubscription/Message/To": "@{coalesce(body('AWG_-_CON_-_04_Aprobacion_Tabla_Get_Aprobador')?['mail'], body('AWG_-_CON_-_04_Aprobacion_Tabla_Get_Aprobador')?['userPrincipalName'])}",
+                          "optionsEmailSubscription/Message/Subject": "[AWG CON] Aprobación requerida - envío a OSSGenAI - Consolidación 04 (pedir tabla completa - dentro de 10 días) - @{coalesce(triggerOutputs()?['body/subject'], '')}",
+                          "optionsEmailSubscription/Message/Options": "Aprobar, Rechazar",
+                          "optionsEmailSubscription/Message/HeaderText": "Aprobación requerida: envío a OSSGenAI",
+                          "optionsEmailSubscription/Message/SelectionText": "¿Apruebas enviar este correo a OSSGenAI?",
+                          "optionsEmailSubscription/Message/Body": "<p>Hola,</p><p>El flujo <b>AWG - Consolidation - 04 - Query Con Status</b> está listo para enviar un correo a <b>ossgenai.im@pg.com</b> y necesita tu aprobación.</p><table cellpadding=\"4\" style=\"border-collapse:collapse;font-family:Segoe UI,Arial,sans-serif;font-size:13px\"><tr><td><b>Paso</b></td><td>Consolidación 04 (pedir tabla completa - dentro de 10 días)</td></tr><tr><td><b>Para</b></td><td>ossgenai.im@pg.com</td></tr><tr><td><b>Asunto del hilo</b></td><td>@{coalesce(triggerOutputs()?['body/subject'], '')}</td></tr><tr><td><b>Tipo de envío</b></td><td>Respuesta en el mismo hilo de la respuesta de OSSGenAI (incluye historial).</td></tr><tr><td><b>Correo original</b></td><td>Respuesta de OSSGenAI que disparó el flujo (asunto arriba).</td></tr></table><p><b>Aprobar</b>: se envía el correo tal como aparece abajo y el flujo continúa.<br><b>Rechazar</b>: no se envía nada, no se notifica a nadie y el correo original vuelve como no leído a la carpeta <i>Marín, Cristhofer - AWG + Wakefern</i>.<br>Si no respondes en 24 horas se trata como <b>Rechazar</b>.</p><hr><p><b>Contenido que se enviará a OSSGenAI:</b></p><div style=\"border-left:4px solid #0078d4;padding:8px 12px;background:#f6f8fa\">@{outputs('AWG_-_CON_-_04_Compose_OSSGenAI_Request_Tabla')?['comment']}</div>",
+                          "optionsEmailSubscription/Message/Importance": "High",
+                          "optionsEmailSubscription/Message/UseOnlyHTMLMessage": true,
+                          "optionsEmailSubscription/Message/HideHTMLMessage": false,
+                          "optionsEmailSubscription/Message/ShowHTMLConfirmationDialog": false
+                        },
+                        "authentication": "@parameters('$authentication')"
+                      }
+                    },
+                    "AWG_-_CON_-_04_Aprobacion_Tabla_Guard_Aprobado": {
+                      "runAfter": {
+                        "AWG_-_CON_-_04_Aprobacion_Tabla_Enviar_Solicitud": [
+                          "Succeeded",
+                          "Failed",
+                          "TimedOut",
+                          "Skipped"
+                        ]
+                      },
+                      "type": "If",
+                      "expression": {
+                        "and": [
+                          {
+                            "equals": [
+                              "@actions('AWG_-_CON_-_04_Aprobacion_Tabla_Enviar_Solicitud')?['status']",
+                              "Succeeded"
+                            ]
+                          },
+                          {
+                            "equals": [
+                              "@coalesce(actions('AWG_-_CON_-_04_Aprobacion_Tabla_Enviar_Solicitud')?['outputs']?['body']?['SelectedOption'], '')",
+                              "Aprobar"
+                            ]
+                          }
+                        ]
+                      },
+                      "actions": {
+                        "AWG_-_CON_-_04_Aprobacion_Tabla_Aprobado": {
+                          "runAfter": {},
+                          "type": "Compose",
+                          "inputs": "Aprobado por @{coalesce(actions('AWG_-_CON_-_04_Aprobacion_Tabla_Enviar_Solicitud')?['outputs']?['body']?['UserEmailAddress'], '')}"
+                        }
+                      },
+                      "else": {
+                        "actions": {
+                          "AWG_-_CON_-_04_Aprobacion_Tabla_Rechazo_Get_Original": {
+                            "runAfter": {},
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                              "parameters": {
+                                "Uri": "https://graph.microsoft.com/v1.0/users/pgcustservw2.im@pg.com/messages/@{encodeUriComponent(outputs('AWG_-_CON_-_04_Compose_Current_Immutable_ID'))}?$select=id,parentFolderId",
+                                "Method": "GET",
+                                "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                "ContentType": "application/json"
+                              },
+                              "host": {
+                                "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                "operationId": "HttpRequest",
+                                "connectionName": "shared_office365"
+                              },
+                              "authentication": "@parameters('$authentication')"
+                            }
+                          },
+                          "AWG_-_CON_-_04_Aprobacion_Tabla_Rechazo_Guard_Original_Fuera_De_Carpeta": {
+                            "runAfter": {
+                              "AWG_-_CON_-_04_Aprobacion_Tabla_Rechazo_Get_Original": [
+                                "Succeeded"
+                              ]
+                            },
+                            "type": "If",
+                            "expression": {
+                              "and": [
+                                {
+                                  "not": {
+                                    "equals": [
+                                      "@body('AWG_-_CON_-_04_Aprobacion_Tabla_Rechazo_Get_Original')?['parentFolderId']",
+                                      "@outputs('AWG_-_CON_-_04_Target_Client_Folder_Id')"
+                                    ]
+                                  }
+                                }
+                              ]
+                            },
+                            "actions": {
+                              "AWG_-_CON_-_04_Aprobacion_Tabla_Rechazo_Move_Original_To_Client_Folder": {
+                                "type": "OpenApiConnection",
+                                "inputs": {
+                                  "parameters": {
+                                    "Uri": "https://graph.microsoft.com/v1.0/users/pgcustservw2.im@pg.com/messages/@{encodeUriComponent(outputs('AWG_-_CON_-_04_Compose_Current_Immutable_ID'))}/move",
+                                    "Method": "POST",
+                                    "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                    "Body": "@concat('{\"destinationId\":\"', outputs('AWG_-_CON_-_04_Target_Client_Folder_Id'), '\"}')",
+                                    "ContentType": "application/json"
+                                  },
+                                  "host": {
+                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                    "operationId": "HttpRequest",
+                                    "connectionName": "shared_office365"
+                                  },
+                                  "authentication": "@parameters('$authentication')"
+                                }
+                              }
+                            },
+                            "else": {
+                              "actions": {}
+                            }
+                          },
+                          "AWG_-_CON_-_04_Aprobacion_Tabla_Rechazo_Mark_Original_Unread": {
+                            "runAfter": {
+                              "AWG_-_CON_-_04_Aprobacion_Tabla_Rechazo_Guard_Original_Fuera_De_Carpeta": [
+                                "Succeeded",
+                                "Failed",
+                                "Skipped"
+                              ]
+                            },
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                              "parameters": {
+                                "Uri": "https://graph.microsoft.com/v1.0/users/pgcustservw2.im@pg.com/messages/@{encodeUriComponent(outputs('AWG_-_CON_-_04_Compose_Current_Immutable_ID'))}",
+                                "Method": "PATCH",
+                                "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                "Body": "{\"isRead\":false}",
+                                "ContentType": "application/json"
+                              },
+                              "host": {
+                                "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                "operationId": "HttpRequest",
+                                "connectionName": "shared_office365"
+                              },
+                              "authentication": "@parameters('$authentication')"
+                            }
+                          },
+                          "AWG_-_CON_-_04_Aprobacion_Tabla_Rechazo_Terminate": {
+                            "runAfter": {
+                              "AWG_-_CON_-_04_Aprobacion_Tabla_Rechazo_Mark_Original_Unread": [
+                                "Succeeded",
+                                "Failed",
+                                "Skipped"
+                              ]
+                            },
+                            "type": "Terminate",
+                            "inputs": {
+                              "runStatus": "Cancelled"
+                            }
+                          }
+                        }
                       }
                     }
                   },
@@ -618,7 +828,11 @@
                   "else": {
                     "actions": {
                       "Update_item": {
-                        "runAfter": {},
+                        "runAfter": {
+                          "AWG_-_CON_-_04_Aprobacion_10Dias_Guard_Aprobado": [
+                            "Succeeded"
+                          ]
+                        },
                         "metadata": {
                           "operationMetadataId": "fc9c85f2-b580-469a-9e57-fa3fde5e3ca1"
                         },
@@ -684,7 +898,7 @@
                           "parameters": {
                             "Uri": "https://graph.microsoft.com/v1.0/users/pgcustservw2.im@pg.com/messages/@{encodeUriComponent(outputs('AWG_-_CON_-_04_Compose_Current_Immutable_ID'))}/reply",
                             "Method": "POST",
-                            "Body": "{\n  \"message\": {\n    \"toRecipients\": [\n      {\n        \"emailAddress\": {\n          \"address\": \"ossgenai.im@pg.com\"\n        }\n      }\n    ],\n    \"ccRecipients\": [],\n    \"bccRecipients\": []\n  },\n  \"comment\": \"Hello,<br><br>This consolidation request has been reviewed.<br><br>Based on the aligned Requested Delivery Date, this consolidation will be worked once it enters the 10 days out window.<br><br>Scheduled work date: @{formatDateTime(addDays(outputs('NewRDD_ISO'), -10), 'MM/dd/yyyy')}<br><br>Thank you.@{replace(variables('SignatureHtml'),'\"','\\\"')}\"\n}",
+                            "Body": "@outputs('AWG_-_CON_-_04_Compose_OSSGenAI_Request_10Dias')",
                             "ContentType": "application/json",
                             "CustomHeader1": "Prefer: IdType=\"ImmutableId\""
                           },
@@ -714,6 +928,212 @@
                             "emailMessage/Importance": "Normal"
                           },
                           "authentication": "@parameters('$authentication')"
+                        }
+                      },
+                      "AWG_-_CON_-_04_Compose_OSSGenAI_Request_10Dias": {
+                        "runAfter": {},
+                        "type": "Compose",
+                        "inputs": {
+                          "message": {
+                            "toRecipients": [
+                              {
+                                "emailAddress": {
+                                  "address": "ossgenai.im@pg.com"
+                                }
+                              }
+                            ],
+                            "ccRecipients": [],
+                            "bccRecipients": []
+                          },
+                          "comment": "Hello,<br><br>This consolidation request has been reviewed.<br><br>Based on the aligned Requested Delivery Date, this consolidation will be worked once it enters the 10 days out window.<br><br>Scheduled work date: @{formatDateTime(addDays(outputs('NewRDD_ISO'), -10), 'MM/dd/yyyy')}<br><br>Thank you.@{variables('SignatureHtml')}"
+                        }
+                      },
+                      "AWG_-_CON_-_04_Aprobacion_10Dias_Get_Aprobador": {
+                        "runAfter": {
+                          "AWG_-_CON_-_04_Compose_OSSGenAI_Request_10Dias": [
+                            "Succeeded"
+                          ]
+                        },
+                        "type": "OpenApiConnection",
+                        "inputs": {
+                          "parameters": {
+                            "Uri": "https://graph.microsoft.com/v1.0/me?$select=mail,userPrincipalName",
+                            "Method": "GET"
+                          },
+                          "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                            "operationId": "HttpRequest",
+                            "connectionName": "shared_office365"
+                          },
+                          "authentication": "@parameters('$authentication')"
+                        }
+                      },
+                      "AWG_-_CON_-_04_Aprobacion_10Dias_Enviar_Solicitud": {
+                        "runAfter": {
+                          "AWG_-_CON_-_04_Aprobacion_10Dias_Get_Aprobador": [
+                            "Succeeded"
+                          ]
+                        },
+                        "limit": {
+                          "timeout": "P1D"
+                        },
+                        "type": "OpenApiConnectionWebhook",
+                        "inputs": {
+                          "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                            "operationId": "SendMailWithOptions",
+                            "connectionName": "shared_office365"
+                          },
+                          "parameters": {
+                            "optionsEmailSubscription/Message/To": "@{coalesce(body('AWG_-_CON_-_04_Aprobacion_10Dias_Get_Aprobador')?['mail'], body('AWG_-_CON_-_04_Aprobacion_10Dias_Get_Aprobador')?['userPrincipalName'])}",
+                            "optionsEmailSubscription/Message/Subject": "[AWG CON] Aprobación requerida - envío a OSSGenAI - Consolidación 04 (aviso pendiente 10 días) - @{coalesce(triggerOutputs()?['body/subject'], '')}",
+                            "optionsEmailSubscription/Message/Options": "Aprobar, Rechazar",
+                            "optionsEmailSubscription/Message/HeaderText": "Aprobación requerida: envío a OSSGenAI",
+                            "optionsEmailSubscription/Message/SelectionText": "¿Apruebas enviar este correo a OSSGenAI?",
+                            "optionsEmailSubscription/Message/Body": "<p>Hola,</p><p>El flujo <b>AWG - Consolidation - 04 - Query Con Status</b> está listo para enviar un correo a <b>ossgenai.im@pg.com</b> y necesita tu aprobación.</p><table cellpadding=\"4\" style=\"border-collapse:collapse;font-family:Segoe UI,Arial,sans-serif;font-size:13px\"><tr><td><b>Paso</b></td><td>Consolidación 04 (aviso pendiente 10 días)</td></tr><tr><td><b>Para</b></td><td>ossgenai.im@pg.com</td></tr><tr><td><b>Asunto del hilo</b></td><td>@{coalesce(triggerOutputs()?['body/subject'], '')}</td></tr><tr><td><b>Tipo de envío</b></td><td>Respuesta en el mismo hilo de la respuesta de OSSGenAI (incluye historial). Si apruebas, también sale el aviso 'Pending 10 Days Out' al equipo como hasta ahora.</td></tr><tr><td><b>Correo original</b></td><td>Respuesta de OSSGenAI que disparó el flujo (asunto arriba).</td></tr></table><p><b>Aprobar</b>: se envía el correo tal como aparece abajo y el flujo continúa.<br><b>Rechazar</b>: no se envía nada, no se notifica a nadie y el correo original vuelve como no leído a la carpeta <i>Marín, Cristhofer - AWG + Wakefern</i>.<br>Si no respondes en 24 horas se trata como <b>Rechazar</b>.</p><hr><p><b>Contenido que se enviará a OSSGenAI:</b></p><div style=\"border-left:4px solid #0078d4;padding:8px 12px;background:#f6f8fa\">@{outputs('AWG_-_CON_-_04_Compose_OSSGenAI_Request_10Dias')?['comment']}</div>",
+                            "optionsEmailSubscription/Message/Importance": "High",
+                            "optionsEmailSubscription/Message/UseOnlyHTMLMessage": true,
+                            "optionsEmailSubscription/Message/HideHTMLMessage": false,
+                            "optionsEmailSubscription/Message/ShowHTMLConfirmationDialog": false
+                          },
+                          "authentication": "@parameters('$authentication')"
+                        }
+                      },
+                      "AWG_-_CON_-_04_Aprobacion_10Dias_Guard_Aprobado": {
+                        "runAfter": {
+                          "AWG_-_CON_-_04_Aprobacion_10Dias_Enviar_Solicitud": [
+                            "Succeeded",
+                            "Failed",
+                            "TimedOut",
+                            "Skipped"
+                          ]
+                        },
+                        "type": "If",
+                        "expression": {
+                          "and": [
+                            {
+                              "equals": [
+                                "@actions('AWG_-_CON_-_04_Aprobacion_10Dias_Enviar_Solicitud')?['status']",
+                                "Succeeded"
+                              ]
+                            },
+                            {
+                              "equals": [
+                                "@coalesce(actions('AWG_-_CON_-_04_Aprobacion_10Dias_Enviar_Solicitud')?['outputs']?['body']?['SelectedOption'], '')",
+                                "Aprobar"
+                              ]
+                            }
+                          ]
+                        },
+                        "actions": {
+                          "AWG_-_CON_-_04_Aprobacion_10Dias_Aprobado": {
+                            "runAfter": {},
+                            "type": "Compose",
+                            "inputs": "Aprobado por @{coalesce(actions('AWG_-_CON_-_04_Aprobacion_10Dias_Enviar_Solicitud')?['outputs']?['body']?['UserEmailAddress'], '')}"
+                          }
+                        },
+                        "else": {
+                          "actions": {
+                            "AWG_-_CON_-_04_Aprobacion_10Dias_Rechazo_Get_Original": {
+                              "runAfter": {},
+                              "type": "OpenApiConnection",
+                              "inputs": {
+                                "parameters": {
+                                  "Uri": "https://graph.microsoft.com/v1.0/users/pgcustservw2.im@pg.com/messages/@{encodeUriComponent(outputs('AWG_-_CON_-_04_Compose_Current_Immutable_ID'))}?$select=id,parentFolderId",
+                                  "Method": "GET",
+                                  "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                  "ContentType": "application/json"
+                                },
+                                "host": {
+                                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                  "operationId": "HttpRequest",
+                                  "connectionName": "shared_office365"
+                                },
+                                "authentication": "@parameters('$authentication')"
+                              }
+                            },
+                            "AWG_-_CON_-_04_Aprobacion_10Dias_Rechazo_Guard_Original_Fuera_De_Carpeta": {
+                              "runAfter": {
+                                "AWG_-_CON_-_04_Aprobacion_10Dias_Rechazo_Get_Original": [
+                                  "Succeeded"
+                                ]
+                              },
+                              "type": "If",
+                              "expression": {
+                                "and": [
+                                  {
+                                    "not": {
+                                      "equals": [
+                                        "@body('AWG_-_CON_-_04_Aprobacion_10Dias_Rechazo_Get_Original')?['parentFolderId']",
+                                        "@outputs('AWG_-_CON_-_04_Target_Client_Folder_Id')"
+                                      ]
+                                    }
+                                  }
+                                ]
+                              },
+                              "actions": {
+                                "AWG_-_CON_-_04_Aprobacion_10Dias_Rechazo_Move_Original_To_Client_Folder": {
+                                  "type": "OpenApiConnection",
+                                  "inputs": {
+                                    "parameters": {
+                                      "Uri": "https://graph.microsoft.com/v1.0/users/pgcustservw2.im@pg.com/messages/@{encodeUriComponent(outputs('AWG_-_CON_-_04_Compose_Current_Immutable_ID'))}/move",
+                                      "Method": "POST",
+                                      "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                      "Body": "@concat('{\"destinationId\":\"', outputs('AWG_-_CON_-_04_Target_Client_Folder_Id'), '\"}')",
+                                      "ContentType": "application/json"
+                                    },
+                                    "host": {
+                                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                      "operationId": "HttpRequest",
+                                      "connectionName": "shared_office365"
+                                    },
+                                    "authentication": "@parameters('$authentication')"
+                                  }
+                                }
+                              },
+                              "else": {
+                                "actions": {}
+                              }
+                            },
+                            "AWG_-_CON_-_04_Aprobacion_10Dias_Rechazo_Mark_Original_Unread": {
+                              "runAfter": {
+                                "AWG_-_CON_-_04_Aprobacion_10Dias_Rechazo_Guard_Original_Fuera_De_Carpeta": [
+                                  "Succeeded",
+                                  "Failed",
+                                  "Skipped"
+                                ]
+                              },
+                              "type": "OpenApiConnection",
+                              "inputs": {
+                                "parameters": {
+                                  "Uri": "https://graph.microsoft.com/v1.0/users/pgcustservw2.im@pg.com/messages/@{encodeUriComponent(outputs('AWG_-_CON_-_04_Compose_Current_Immutable_ID'))}",
+                                  "Method": "PATCH",
+                                  "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                  "Body": "{\"isRead\":false}",
+                                  "ContentType": "application/json"
+                                },
+                                "host": {
+                                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                  "operationId": "HttpRequest",
+                                  "connectionName": "shared_office365"
+                                },
+                                "authentication": "@parameters('$authentication')"
+                              }
+                            },
+                            "AWG_-_CON_-_04_Aprobacion_10Dias_Rechazo_Terminate": {
+                              "runAfter": {
+                                "AWG_-_CON_-_04_Aprobacion_10Dias_Rechazo_Mark_Original_Unread": [
+                                  "Succeeded",
+                                  "Failed",
+                                  "Skipped"
+                                ]
+                              },
+                              "type": "Terminate",
+                              "inputs": {
+                                "runStatus": "Cancelled"
+                              }
+                            }
+                          }
                         }
                       }
                     }

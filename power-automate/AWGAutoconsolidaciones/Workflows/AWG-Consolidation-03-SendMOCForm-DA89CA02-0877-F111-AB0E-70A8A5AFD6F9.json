@@ -427,7 +427,7 @@
                     },
                     "Consolidation_Tracking": {
                       "runAfter": {
-                        "DEBUG_All_POs": [
+                        "AWG_-_CON_-_03_Aprobacion_Guard_Aprobado": [
                           "Succeeded"
                         ]
                       },
@@ -453,10 +453,8 @@
                     },
                     "AWG_-_CON_-_03_Compose_RDD_Reply_HTML": {
                       "runAfter": {
-                        "AWG_-_CON_-_03_Guard_Customer_Known": [
-                          "Succeeded",
-                          "Failed",
-                          "Skipped"
+                        "DEBUG_All_POs": [
+                          "Succeeded"
                         ]
                       },
                       "type": "Compose",
@@ -464,8 +462,10 @@
                     },
                     "AWG_-_CON_-_03_HTTP_Send_RDD_Reply_By_Immutable_ID": {
                       "runAfter": {
-                        "AWG_-_CON_-_03_Compose_RDD_Reply_HTML": [
-                          "Succeeded"
+                        "AWG_-_CON_-_03_Guard_Customer_Known": [
+                          "Succeeded",
+                          "Failed",
+                          "Skipped"
                         ]
                       },
                       "type": "OpenApiConnection",
@@ -474,7 +474,7 @@
                           "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('AWG_-_CON_-_03_Compose_Current_Immutable_ID'))}/reply",
                           "Method": "POST",
                           "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
-                          "Body": "@json(concat('{\"message\":{\"toRecipients\":[{\"emailAddress\":{\"address\":\"ossgenai.im@pg.com\"}}],\"body\":{\"contentType\":\"HTML\",\"content\":\"', replace(outputs('AWG_-_CON_-_03_Compose_RDD_Reply_HTML'), '\"', '\\\"'), '\"}}}'))",
+                          "Body": "@outputs('AWG_-_CON_-_03_Compose_OSSGenAI_Request')",
                           "ContentType": "application/json"
                         },
                         "host": {
@@ -709,6 +709,212 @@
                           "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
                           "operationId": "DeleteFile",
                           "connectionName": "shared_sharepointonline"
+                        }
+                      }
+                    },
+                    "AWG_-_CON_-_03_Compose_OSSGenAI_Request": {
+                      "runAfter": {
+                        "AWG_-_CON_-_03_Compose_RDD_Reply_HTML": [
+                          "Succeeded"
+                        ]
+                      },
+                      "type": "Compose",
+                      "inputs": {
+                        "message": {
+                          "toRecipients": [
+                            {
+                              "emailAddress": {
+                                "address": "ossgenai.im@pg.com"
+                              }
+                            }
+                          ],
+                          "body": {
+                            "contentType": "HTML",
+                            "content": "@{outputs('AWG_-_CON_-_03_Compose_RDD_Reply_HTML')}"
+                          }
+                        }
+                      }
+                    },
+                    "AWG_-_CON_-_03_Aprobacion_Get_Aprobador": {
+                      "runAfter": {
+                        "AWG_-_CON_-_03_Compose_OSSGenAI_Request": [
+                          "Succeeded"
+                        ]
+                      },
+                      "type": "OpenApiConnection",
+                      "inputs": {
+                        "parameters": {
+                          "Uri": "https://graph.microsoft.com/v1.0/me?$select=mail,userPrincipalName",
+                          "Method": "GET"
+                        },
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                          "operationId": "HttpRequest",
+                          "connectionName": "shared_office365"
+                        }
+                      }
+                    },
+                    "AWG_-_CON_-_03_Aprobacion_Enviar_Solicitud": {
+                      "runAfter": {
+                        "AWG_-_CON_-_03_Aprobacion_Get_Aprobador": [
+                          "Succeeded"
+                        ]
+                      },
+                      "limit": {
+                        "timeout": "P1D"
+                      },
+                      "type": "OpenApiConnectionWebhook",
+                      "inputs": {
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                          "operationId": "SendMailWithOptions",
+                          "connectionName": "shared_office365"
+                        },
+                        "parameters": {
+                          "optionsEmailSubscription/Message/To": "@{coalesce(body('AWG_-_CON_-_03_Aprobacion_Get_Aprobador')?['mail'], body('AWG_-_CON_-_03_Aprobacion_Get_Aprobador')?['userPrincipalName'])}",
+                          "optionsEmailSubscription/Message/Subject": "[AWG CON] Aprobación requerida - envío a OSSGenAI - Consolidación 03 (alineación de RDD) - @{coalesce(triggerOutputs()?['body/subject'], '')}",
+                          "optionsEmailSubscription/Message/Options": "Aprobar, Rechazar",
+                          "optionsEmailSubscription/Message/HeaderText": "Aprobación requerida: envío a OSSGenAI",
+                          "optionsEmailSubscription/Message/SelectionText": "¿Apruebas enviar este correo a OSSGenAI?",
+                          "optionsEmailSubscription/Message/Body": "<p>Hola,</p><p>El flujo <b>AWG - Consolidation - 03 - Send MOC Form</b> está listo para enviar un correo a <b>ossgenai.im@pg.com</b> y necesita tu aprobación.</p><table cellpadding=\"4\" style=\"border-collapse:collapse;font-family:Segoe UI,Arial,sans-serif;font-size:13px\"><tr><td><b>Paso</b></td><td>Consolidación 03 (alineación de RDD)</td></tr><tr><td><b>Para</b></td><td>ossgenai.im@pg.com</td></tr><tr><td><b>Asunto del hilo</b></td><td>@{coalesce(triggerOutputs()?['body/subject'], '')}</td></tr><tr><td><b>Tipo de envío</b></td><td>Respuesta en el mismo hilo del correo de ride-with. Si apruebas, también se envía el Consolidation Request (MOC) a nacsoshared como hasta ahora.</td></tr><tr><td><b>Correo original</b></td><td>Correo de ride-with que disparó el flujo (asunto arriba).</td></tr></table><p><b>Aprobar</b>: se envía el correo tal como aparece abajo y el flujo continúa.<br><b>Rechazar</b>: no se envía nada, no se notifica a nadie y el correo original vuelve como no leído a la carpeta <i>Marín, Cristhofer - AWG + Wakefern</i>.<br>Si no respondes en 24 horas se trata como <b>Rechazar</b>.</p><hr><p><b>Contenido que se enviará a OSSGenAI:</b></p><div style=\"border-left:4px solid #0078d4;padding:8px 12px;background:#f6f8fa\">@{outputs('AWG_-_CON_-_03_Compose_RDD_Reply_HTML')}</div>",
+                          "optionsEmailSubscription/Message/Importance": "High",
+                          "optionsEmailSubscription/Message/UseOnlyHTMLMessage": true,
+                          "optionsEmailSubscription/Message/HideHTMLMessage": false,
+                          "optionsEmailSubscription/Message/ShowHTMLConfirmationDialog": false
+                        }
+                      }
+                    },
+                    "AWG_-_CON_-_03_Aprobacion_Guard_Aprobado": {
+                      "runAfter": {
+                        "AWG_-_CON_-_03_Aprobacion_Enviar_Solicitud": [
+                          "Succeeded",
+                          "Failed",
+                          "TimedOut",
+                          "Skipped"
+                        ]
+                      },
+                      "type": "If",
+                      "expression": {
+                        "and": [
+                          {
+                            "equals": [
+                              "@actions('AWG_-_CON_-_03_Aprobacion_Enviar_Solicitud')?['status']",
+                              "Succeeded"
+                            ]
+                          },
+                          {
+                            "equals": [
+                              "@coalesce(actions('AWG_-_CON_-_03_Aprobacion_Enviar_Solicitud')?['outputs']?['body']?['SelectedOption'], '')",
+                              "Aprobar"
+                            ]
+                          }
+                        ]
+                      },
+                      "actions": {
+                        "AWG_-_CON_-_03_Aprobacion_Aprobado": {
+                          "runAfter": {},
+                          "type": "Compose",
+                          "inputs": "Aprobado por @{coalesce(actions('AWG_-_CON_-_03_Aprobacion_Enviar_Solicitud')?['outputs']?['body']?['UserEmailAddress'], '')}"
+                        }
+                      },
+                      "else": {
+                        "actions": {
+                          "AWG_-_CON_-_03_Aprobacion_Rechazo_Get_Original": {
+                            "runAfter": {},
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                              "parameters": {
+                                "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('AWG_-_CON_-_03_Compose_Current_Immutable_ID'))}?$select=id,parentFolderId",
+                                "Method": "GET",
+                                "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                "ContentType": "application/json"
+                              },
+                              "host": {
+                                "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                "operationId": "HttpRequest",
+                                "connectionName": "shared_office365"
+                              }
+                            }
+                          },
+                          "AWG_-_CON_-_03_Aprobacion_Rechazo_Guard_Original_Fuera_De_Carpeta": {
+                            "runAfter": {
+                              "AWG_-_CON_-_03_Aprobacion_Rechazo_Get_Original": [
+                                "Succeeded"
+                              ]
+                            },
+                            "type": "If",
+                            "expression": {
+                              "and": [
+                                {
+                                  "not": {
+                                    "equals": [
+                                      "@body('AWG_-_CON_-_03_Aprobacion_Rechazo_Get_Original')?['parentFolderId']",
+                                      "@outputs('AWG_-_CON_-_03_Target_Client_Folder_Id')"
+                                    ]
+                                  }
+                                }
+                              ]
+                            },
+                            "actions": {
+                              "AWG_-_CON_-_03_Aprobacion_Rechazo_Move_Original_To_Client_Folder": {
+                                "type": "OpenApiConnection",
+                                "inputs": {
+                                  "parameters": {
+                                    "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('AWG_-_CON_-_03_Compose_Current_Immutable_ID'))}/move",
+                                    "Method": "POST",
+                                    "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                    "Body": "@concat('{\"destinationId\":\"', outputs('AWG_-_CON_-_03_Target_Client_Folder_Id'), '\"}')",
+                                    "ContentType": "application/json"
+                                  },
+                                  "host": {
+                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                    "operationId": "HttpRequest",
+                                    "connectionName": "shared_office365"
+                                  }
+                                }
+                              }
+                            },
+                            "else": {
+                              "actions": {}
+                            }
+                          },
+                          "AWG_-_CON_-_03_Aprobacion_Rechazo_Mark_Original_Unread": {
+                            "runAfter": {
+                              "AWG_-_CON_-_03_Aprobacion_Rechazo_Guard_Original_Fuera_De_Carpeta": [
+                                "Succeeded",
+                                "Failed",
+                                "Skipped"
+                              ]
+                            },
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                              "parameters": {
+                                "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('AWG_-_CON_-_03_Compose_Current_Immutable_ID'))}",
+                                "Method": "PATCH",
+                                "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                "Body": "{\"isRead\":false}",
+                                "ContentType": "application/json"
+                              },
+                              "host": {
+                                "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                "operationId": "HttpRequest",
+                                "connectionName": "shared_office365"
+                              }
+                            }
+                          },
+                          "AWG_-_CON_-_03_Aprobacion_Rechazo_Terminate": {
+                            "runAfter": {
+                              "AWG_-_CON_-_03_Aprobacion_Rechazo_Mark_Original_Unread": [
+                                "Succeeded",
+                                "Failed",
+                                "Skipped"
+                              ]
+                            },
+                            "type": "Terminate",
+                            "inputs": {
+                              "runStatus": "Cancelled"
+                            }
+                          }
                         }
                       }
                     }
