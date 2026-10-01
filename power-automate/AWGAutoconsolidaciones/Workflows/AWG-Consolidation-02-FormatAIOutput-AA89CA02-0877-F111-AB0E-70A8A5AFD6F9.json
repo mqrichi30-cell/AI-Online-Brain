@@ -1,0 +1,886 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_office365": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "awg_sharedoffice365_37d40"
+        },
+        "api": {
+          "name": "shared_office365"
+        }
+      },
+      "shared_sharepointonline": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "awg_sharedsharepointonline_6e67f"
+        },
+        "api": {
+          "name": "shared_sharepointonline"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        }
+      },
+      "triggers": {
+        "When_a_new_email_arrives_(V3)": {
+          "splitOn": "@triggerOutputs()?['body/value']",
+          "metadata": {
+            "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAYFina4AAA=": "Marín, Cristhofer - AWG + Wakefern"
+          },
+          "type": "OpenApiConnectionNotification",
+          "inputs": {
+            "parameters": {
+              "from": "ossgenai.im@pg.com",
+              "includeAttachments": false,
+              "fetchOnlyWithAttachment": false,
+              "folderPath": "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAYFina4AAA="
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+              "operationId": "OnNewEmailV3",
+              "connectionName": "shared_office365"
+            }
+          }
+        }
+      },
+      "actions": {
+        "Initialize_SignatureHtml": {
+          "runAfter": {},
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "SignatureHtml",
+                "type": "string",
+                "value": "<br>Regards,<br><table cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"border-collapse:collapse;\"><tr><td style=\"padding:0 14px 0 0;vertical-align:middle;\"><img src=\"data:image/png;base64,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\" width=\"120\" height=\"61\" alt=\"P&amp;G\" style=\"display:block;border:0;\" /></td><td style=\"vertical-align:middle;font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:16pt;color:#000000;\">Cristhofer Mar&iacute;n Quir&oacute;s<br>pgcustservw2.im@pg.com<br>F&amp;A | NA Order Management Analyst | Regional Sales to Cash</td></tr></table><br>"
+              }
+            ]
+          }
+        },
+        "Compose_FlowId_From_Body": {
+          "runAfter": {
+            "Initialize_SignatureHtml": [
+              "Succeeded"
+            ]
+          },
+          "type": "Compose",
+          "inputs": "@if(contains(coalesce(triggerOutputs()?['body/body'], ''), 'AWG-FLOW-ID:'), trim(first(split(first(split(replace(replace(replace(last(split(coalesce(triggerOutputs()?['body/body'], ''), 'AWG-FLOW-ID:')), '&nbsp;', ' '), '&#160;', ' '), '</', '<'), '<')), '|'))), '')"
+        },
+        "AWG_-_CON_-_02_Get_Tracking_Item": {
+          "runAfter": {
+            "Compose_FlowId_From_Body": [
+              "Succeeded"
+            ]
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+              "table": "70ed8abc-c524-4142-9d8a-86f70ced426c",
+              "$filter": "FlowId eq '@{outputs('Compose_FlowId_From_Body')}' and Phase eq '01-IntakeSent'",
+              "$top": 1
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "operationId": "GetItems",
+              "connectionName": "shared_sharepointonline"
+            }
+          }
+        },
+        "AWG_-_CON_-_02_Guard_Not_In_Flow": {
+          "actions": {},
+          "runAfter": {
+            "AWG_-_CON_-_02_Get_Tracking_Item": [
+              "Succeeded"
+            ]
+          },
+          "else": {
+            "actions": {
+              "Terminate_Not_Tracked": {
+                "type": "Terminate",
+                "inputs": {
+                  "runStatus": "Cancelled"
+                }
+              }
+            }
+          },
+          "expression": {
+            "and": [
+              {
+                "greater": [
+                  "@length(body('AWG_-_CON_-_02_Get_Tracking_Item')?['value'])",
+                  0
+                ]
+              }
+            ]
+          },
+          "type": "If"
+        },
+        "Initialize_variable_-_TrucksArray": {
+          "runAfter": {
+            "AWG_-_CON_-_02_Guard_Not_In_Flow": [
+              "Succeeded"
+            ]
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "varTrucksArray",
+                "type": "array",
+                "value": []
+              }
+            ]
+          }
+        },
+        "AWG_-_CON_-_02_Get_Client_Folder": {
+          "runAfter": {
+            "Initialize_variable_-_TrucksArray": [
+              "Succeeded"
+            ]
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "Uri": "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/childFolders?$filter=displayName%20eq%20%27Mar%C3%ADn%2C%20Cristhofer%20-%20AWG%20%2B%20Wakefern%27&$top=1",
+              "Method": "GET"
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+              "operationId": "HttpRequest",
+              "connectionName": "shared_office365"
+            }
+          }
+        },
+        "AWG_-_CON_-_02_Target_Client_Folder_Id": {
+          "runAfter": {
+            "AWG_-_CON_-_02_Get_Client_Folder": [
+              "Succeeded"
+            ]
+          },
+          "type": "Compose",
+          "inputs": "@first(body('AWG_-_CON_-_02_Get_Client_Folder')?['value'])?['id']"
+        },
+        "AWG_-_CON_-_02_Get_AWG_Complete_Folder": {
+          "runAfter": {
+            "AWG_-_CON_-_02_Target_Client_Folder_Id": [
+              "Succeeded"
+            ]
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "Uri": "@concat('https://graph.microsoft.com/v1.0/me/mailFolders/', encodeUriComponent(outputs('AWG_-_CON_-_02_Target_Client_Folder_Id')), '/childFolders?$filter=displayName%20eq%20%27AWG%20Complete%27&$top=1')",
+              "Method": "GET"
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+              "operationId": "HttpRequest",
+              "connectionName": "shared_office365"
+            }
+          }
+        },
+        "AWG_-_CON_-_02_Target_AWG_Complete_Folder_Id": {
+          "runAfter": {
+            "AWG_-_CON_-_02_Get_AWG_Complete_Folder": [
+              "Succeeded"
+            ]
+          },
+          "type": "Compose",
+          "inputs": "@first(body('AWG_-_CON_-_02_Get_AWG_Complete_Folder')?['value'])?['id']"
+        },
+        "AWG_-_CON_-_02_Get_AWG_CON_01_Folder": {
+          "runAfter": {
+            "AWG_-_CON_-_02_Target_AWG_Complete_Folder_Id": [
+              "Succeeded"
+            ]
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "Uri": "@concat('https://graph.microsoft.com/v1.0/me/mailFolders/', encodeUriComponent(outputs('AWG_-_CON_-_02_Target_AWG_Complete_Folder_Id')), '/childFolders?$filter=displayName%20eq%20%27AWG%20-%20CON%20-%2001%27&$top=1')",
+              "Method": "GET"
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+              "operationId": "HttpRequest",
+              "connectionName": "shared_office365"
+            }
+          }
+        },
+        "AWG_-_CON_-_02_Target_AWG_CON_01_Folder_Id": {
+          "runAfter": {
+            "AWG_-_CON_-_02_Get_AWG_CON_01_Folder": [
+              "Succeeded"
+            ]
+          },
+          "type": "Compose",
+          "inputs": "@first(body('AWG_-_CON_-_02_Get_AWG_CON_01_Folder')?['value'])?['id']"
+        },
+        "AWG_-_CON_-_02_Get_AWG_CON_02_Folder": {
+          "runAfter": {
+            "AWG_-_CON_-_02_Target_AWG_CON_01_Folder_Id": [
+              "Succeeded"
+            ]
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "Uri": "@concat('https://graph.microsoft.com/v1.0/me/mailFolders/', encodeUriComponent(outputs('AWG_-_CON_-_02_Target_AWG_Complete_Folder_Id')), '/childFolders?$filter=displayName%20eq%20%27AWG%20-%20CON%20-%2002%27&$top=1')",
+              "Method": "GET"
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+              "operationId": "HttpRequest",
+              "connectionName": "shared_office365"
+            }
+          }
+        },
+        "AWG_-_CON_-_02_Target_AWG_CON_02_Folder_Id": {
+          "runAfter": {
+            "AWG_-_CON_-_02_Get_AWG_CON_02_Folder": [
+              "Succeeded"
+            ]
+          },
+          "type": "Compose",
+          "inputs": "@first(body('AWG_-_CON_-_02_Get_AWG_CON_02_Folder')?['value'])?['id']"
+        },
+        "AWG_-_CON_-_02_HTTP_List_AWGCON01_Messages": {
+          "runAfter": {
+            "AWG_-_CON_-_02_Target_AWG_CON_02_Folder_Id": [
+              "Succeeded"
+            ]
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "Uri": "@concat('https://graph.microsoft.com/v1.0/me/mailFolders/', encodeUriComponent(outputs('AWG_-_CON_-_02_Target_AWG_CON_01_Folder_Id')), '/messages?$top=100&$select=id,subject,from,conversationId,parentFolderId,receivedDateTime')",
+              "Method": "GET",
+              "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+              "ContentType": "application/json"
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+              "operationId": "HttpRequest",
+              "connectionName": "shared_office365"
+            }
+          }
+        },
+        "AWG_-_CON_-_02_HTTP_List_AWGCON02_Messages": {
+          "runAfter": {
+            "AWG_-_CON_-_02_HTTP_List_AWGCON01_Messages": [
+              "Succeeded"
+            ]
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "Uri": "@concat('https://graph.microsoft.com/v1.0/me/mailFolders/', encodeUriComponent(outputs('AWG_-_CON_-_02_Target_AWG_CON_02_Folder_Id')), '/messages?$top=100&$select=id,subject,from,conversationId,parentFolderId,receivedDateTime')",
+              "Method": "GET",
+              "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+              "ContentType": "application/json"
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+              "operationId": "HttpRequest",
+              "connectionName": "shared_office365"
+            }
+          }
+        },
+        "AWG_-_CON_-_02_Filter_Current_OSS": {
+          "runAfter": {
+            "AWG_-_CON_-_02_HTTP_List_AWGCON02_Messages": [
+              "Succeeded"
+            ]
+          },
+          "type": "Query",
+          "inputs": {
+            "from": "@union(body('AWG_-_CON_-_02_HTTP_List_AWGCON01_Messages')?['value'], body('AWG_-_CON_-_02_HTTP_List_AWGCON02_Messages')?['value'])",
+            "where": "@and(equals(item()?['conversationId'], triggerOutputs()?['body/conversationId']), equals(toLower(item()?['from']?['emailAddress']?['address']), 'ossgenai.im@pg.com'))"
+          }
+        },
+        "AWG_-_CON_-_02_Compose_Resolved_Current_OSS_Immutable_ID": {
+          "runAfter": {
+            "AWG_-_CON_-_02_Filter_Current_OSS": [
+              "Succeeded"
+            ]
+          },
+          "type": "Compose",
+          "inputs": "@if(greater(length(body('AWG_-_CON_-_02_Filter_Current_OSS')), 0), first(body('AWG_-_CON_-_02_Filter_Current_OSS'))?['id'], coalesce(triggerOutputs()?['body/id'],''))"
+        },
+        "Compose_NormalizedBody": {
+          "runAfter": {
+            "AWG_-_CON_-_02_Compose_Resolved_Current_OSS_Immutable_ID": [
+              "Succeeded"
+            ]
+          },
+          "type": "Compose",
+          "inputs": "@toLower(replace(replace(replace(coalesce(triggerOutputs()?['body/body'], ''), '&lt;', '<'), '&gt;', '>'), '&quot;', '\"'))"
+        },
+        "Compose_CurrentEmailOnly": {
+          "runAfter": {
+            "Compose_NormalizedBody": [
+              "Succeeded"
+            ]
+          },
+          "type": "Compose",
+          "inputs": "@first(split(outputs('Compose_NormalizedBody'), '<div id=\"divrplyfwdmsg\"'))"
+        },
+        "Compose_HasPreviousConsolidationCheck": {
+          "runAfter": {
+            "Compose_CurrentEmailOnly": [
+              "Succeeded"
+            ]
+          },
+          "type": "Compose",
+          "inputs": "@or(contains(outputs('Compose_CurrentEmailOnly'), 'Confirm if this email is a consolidation request'), contains(outputs('Compose_CurrentEmailOnly'), 'Is not a consolidation'), contains(outputs('Compose_CurrentEmailOnly'), 'scheduled to ride with another load'), contains(outputs('Compose_CurrentEmailOnly'), 'AWG_CONSOLIDATION_REQUEST'))"
+        },
+        "MainConditio": {
+          "actions": {
+            "CheckAlreadyProcessedConsolidation": {
+              "actions": {
+                "Extract_Formatted_Table_Section": {
+                  "type": "Compose",
+                  "inputs": "@first(split(last(split(outputs('Compose_CurrentEmailOnly'), 'formatted table')), '</table>'))"
+                },
+                "Extract_Table_Rows": {
+                  "runAfter": {
+                    "Extract_Formatted_Table_Section": [
+                      "Succeeded"
+                    ]
+                  },
+                  "type": "Compose",
+                  "inputs": "@skip(split(outputs('Extract_Formatted_Table_Section'), '<tr'), 2)"
+                },
+                "Apply_to_each_TableRow": {
+                  "foreach": "@outputs('Extract_Table_Rows')",
+                  "actions": {
+                    "Compose_Truck_From_Row": {
+                      "type": "Compose",
+                      "inputs": "@trim(replace(replace(first(split(last(split(first(split(item(), '</td>')), '>')), '<')), 'truck', ''), '#', ''))"
+                    },
+                    "Compose_PO_From_Row": {
+                      "runAfter": {
+                        "Compose_Truck_From_Row": [
+                          "Succeeded"
+                        ]
+                      },
+                      "type": "Compose",
+                      "inputs": "@trim(first(split(last(split(first(skip(split(item(), '</td>'), 1)), '>')), '<')))"
+                    },
+                    "Append_to_TrucksArray": {
+                      "runAfter": {
+                        "Compose_SoldTo_From_Row": [
+                          "Succeeded"
+                        ]
+                      },
+                      "type": "AppendToArrayVariable",
+                      "inputs": {
+                        "name": "varTrucksArray",
+                        "value": {
+                          "truck": "@outputs('Compose_Truck_From_Row')",
+                          "po": "@outputs('Compose_PO_From_Row')",
+                          "soldto": "@outputs('Compose_SoldTo_From_Row')"
+                        }
+                      }
+                    },
+                    "Compose_SoldTo_From_Row": {
+                      "runAfter": {
+                        "Compose_PO_From_Row": [
+                          "Succeeded"
+                        ]
+                      },
+                      "type": "Compose",
+                      "inputs": "@trim(first(split(last(split(first(skip(split(item(), '</td>'), 2)), '>')), '<')))"
+                    }
+                  },
+                  "runAfter": {
+                    "Extract_Table_Rows": [
+                      "Succeeded"
+                    ]
+                  },
+                  "type": "Foreach"
+                },
+                "Select_Distinct_Trucks": {
+                  "runAfter": {
+                    "Apply_to_each_TableRow": [
+                      "Succeeded"
+                    ]
+                  },
+                  "type": "Select",
+                  "inputs": {
+                    "from": "@variables('varTrucksArray')",
+                    "select": "@item()['truck']"
+                  }
+                },
+                "Compose_Distinct_Truck_List": {
+                  "runAfter": {
+                    "Select_Distinct_Trucks": [
+                      "Succeeded"
+                    ]
+                  },
+                  "type": "Compose",
+                  "inputs": "@union(body('Select_Distinct_Trucks'), body('Select_Distinct_Trucks'))"
+                },
+                "Check_Any_Valid_Truck": {
+                  "actions": {
+                    "Apply_to_each_Truck": {
+                      "foreach": "@outputs('Compose_Distinct_Truck_List')",
+                      "actions": {
+                        "Filter_POs_For_Truck": {
+                          "type": "Query",
+                          "inputs": {
+                            "from": "@variables('varTrucksArray')",
+                            "where": "@equals(item()?['truck'], items('Apply_to_each_Truck'))"
+                          }
+                        },
+                        "Check_Truck_Has_Multiple_POs": {
+                          "actions": {
+                            "Select_POs_Only": {
+                              "type": "Select",
+                              "inputs": {
+                                "from": "@body('Filter_POs_For_Truck')",
+                                "select": "@item()['po']"
+                              }
+                            },
+                            "Compose_Truck_FlowId": {
+                              "runAfter": {
+                                "Select_POs_Only": [
+                                  "Succeeded"
+                                ]
+                              },
+                              "type": "Compose",
+                              "inputs": "@concat(outputs('Compose_FlowId_From_Body'), '-T', items('Apply_to_each_Truck'))"
+                            },
+                            "Compose_Truck_POs_Joined": {
+                              "runAfter": {
+                                "Compose_Truck_FlowId": [
+                                  "Succeeded"
+                                ]
+                              },
+                              "type": "Compose",
+                              "inputs": "@join(body('Select_POs_Only'), ',')"
+                            },
+                            "Create_Child_Tracking_Item": {
+                              "runAfter": {
+                                "Compose_Truck_SoldTo": [
+                                  "Succeeded"
+                                ]
+                              },
+                              "type": "OpenApiConnection",
+                              "inputs": {
+                                "parameters": {
+                                  "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+                                  "table": "70ed8abc-c524-4142-9d8a-86f70ced426c",
+                                  "item/Title": "@concat('AWG-CON-02-', outputs('Compose_Truck_FlowId'))",
+                                  "item/OriginalMessageId": "@coalesce(first(body('AWG_-_CON_-_02_Get_Tracking_Item')?['value'])?['OriginalMessageId'], '')",
+                                  "item/OriginalConversationId": "@coalesce(first(body('AWG_-_CON_-_02_Get_Tracking_Item')?['value'])?['OriginalConversationId'], triggerOutputs()?['body/conversationId'])",
+                                  "item/POs": "@outputs('Compose_Truck_POs_Joined')",
+                                  "item/OriginalSubject": "@coalesce(first(body('AWG_-_CON_-_02_Get_Tracking_Item')?['value'])?['OriginalSubject'], triggerOutputs()?['body/subject'])",
+                                  "item/Status": "Consolidation",
+                                  "item/FlowId": "@outputs('Compose_Truck_FlowId')",
+                                  "item/Phase": "02-ConsolTableRcvd",
+                                  "item/PhaseSince": "@utcNow()",
+                                  "item/ParentFlowId": "@outputs('Compose_FlowId_From_Body')",
+                                  "item/Customer": "@outputs('Compose_Truck_SoldTo')"
+                                },
+                                "host": {
+                                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                                  "operationId": "PostItem",
+                                  "connectionName": "shared_sharepointonline"
+                                }
+                              }
+                            },
+                            "Compose_Truck_Reply_HTML": {
+                              "runAfter": {
+                                "Create_Child_Tracking_Item": [
+                                  "Succeeded"
+                                ]
+                              },
+                              "type": "Compose",
+                              "inputs": "@concat('<div><p>P&amp;G Team,</p>', '<p>This is an automatic notification that the following Purchase Order(s) are scheduled to ride with another load:</p>', '<ul>', '<li><strong>Main PO Number (The load):</strong> ', first(body('Select_POs_Only')), '</li>', '<li><strong>Riding With PO(s) (The load/s it is attached to):</strong> ', join(skip(body('Select_POs_Only'),1), ', '), '</li>', '<li><strong>Ship-to Location:</strong> N/A</li>', '</ul>', '<p>Please ensure that PO #', first(body('Select_POs_Only')), ' is consolidated with the load for PO(s) #', join(skip(body('Select_POs_Only'),1), ', '), '.</p>', variables('SignatureHtml'), '<p style=\"font-size:1px;color:#ffffff;line-height:1px\">AWG-FLOW-ID: ', outputs('Compose_Truck_FlowId'), ' | AWG-STEP: RIDE_WITH_REQUEST | AWG-CUSTOMER: ', outputs('Compose_Truck_SoldTo'), '</p>', '</div>')"
+                            },
+                            "Send_Truck_Email": {
+                              "runAfter": {
+                                "Compose_Truck_Reply_HTML": [
+                                  "Succeeded"
+                                ]
+                              },
+                              "type": "OpenApiConnection",
+                              "inputs": {
+                                "parameters": {
+                                  "emailMessage/To": "pgcustservw2.im@pg.com",
+                                  "emailMessage/Subject": "@concat(triggerOutputs()?['body/subject'], ' - T', items('Apply_to_each_Truck'))",
+                                  "emailMessage/Body": "@outputs('Compose_Truck_Reply_HTML')",
+                                  "emailMessage/Importance": "Normal"
+                                },
+                                "host": {
+                                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                  "operationId": "SendEmailV2",
+                                  "connectionName": "shared_office365"
+                                }
+                              }
+                            },
+                            "Compose_Truck_SoldTo": {
+                              "runAfter": {
+                                "Compose_Truck_POs_Joined": [
+                                  "Succeeded"
+                                ]
+                              },
+                              "type": "Compose",
+                              "inputs": "@trim(coalesce(first(body('Filter_POs_For_Truck'))?['soldto'],''))"
+                            }
+                          },
+                          "runAfter": {
+                            "Filter_POs_For_Truck": [
+                              "Succeeded"
+                            ]
+                          },
+                          "else": {
+                            "actions": {
+                              "DEBUG_Truck_Ignored": {
+                                "type": "Compose",
+                                "inputs": "@concat('Truck ', items('Apply_to_each_Truck'), ' ignored (only 1 PO).')"
+                              }
+                            }
+                          },
+                          "expression": {
+                            "and": [
+                              {
+                                "greaterOrEquals": [
+                                  "@length(body('Filter_POs_For_Truck'))",
+                                  2
+                                ]
+                              }
+                            ]
+                          },
+                          "type": "If"
+                        }
+                      },
+                      "type": "Foreach"
+                    },
+                    "AWG_-_CON_-_02_Advance_Parent_Phase": {
+                      "runAfter": {
+                        "Apply_to_each_Truck": [
+                          "Succeeded"
+                        ]
+                      },
+                      "type": "OpenApiConnection",
+                      "inputs": {
+                        "parameters": {
+                          "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+                          "table": "70ed8abc-c524-4142-9d8a-86f70ced426c",
+                          "id": "@first(body('AWG_-_CON_-_02_Get_Tracking_Item')?['value'])?['ID']",
+                          "item/FlowId": "@outputs('Compose_FlowId_From_Body')",
+                          "item/Phase": "02-ExpandedIntoTrucks",
+                          "item/PhaseSince": "@utcNow()",
+                          "item/Customer": "@trim(coalesce(first(variables('varTrucksArray'))?['soldto'],''))"
+                        },
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                          "operationId": "PatchItem",
+                          "connectionName": "shared_sharepointonline"
+                        }
+                      }
+                    },
+                    "AWG_-_CON_-_02_Move_Trigger_Email_to_AWG_CON_02": {
+                      "runAfter": {
+                        "AWG_-_CON_-_02_Advance_Parent_Phase": [
+                          "Succeeded"
+                        ]
+                      },
+                      "type": "OpenApiConnection",
+                      "inputs": {
+                        "parameters": {
+                          "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('AWG_-_CON_-_02_Compose_Resolved_Current_OSS_Immutable_ID'))}/move",
+                          "Method": "POST",
+                          "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                          "Body": "@concat('{\"destinationId\":\"', outputs('AWG_-_CON_-_02_Target_AWG_CON_02_Folder_Id'), '\"}')",
+                          "ContentType": "application/json"
+                        },
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                          "operationId": "HttpRequest",
+                          "connectionName": "shared_office365"
+                        }
+                      }
+                    }
+                  },
+                  "runAfter": {
+                    "Compose_Distinct_Truck_List": [
+                      "Succeeded"
+                    ]
+                  },
+                  "else": {
+                    "actions": {
+                      "AWG_-_CON_-_02_NoValidTrucks_HTTP_Mark_OSS_Read": {
+                        "type": "OpenApiConnection",
+                        "inputs": {
+                          "parameters": {
+                            "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('AWG_-_CON_-_02_Compose_Resolved_Current_OSS_Immutable_ID'))}",
+                            "Method": "PATCH",
+                            "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                            "Body": "{\"isRead\":true}",
+                            "ContentType": "application/json"
+                          },
+                          "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                            "operationId": "HttpRequest",
+                            "connectionName": "shared_office365"
+                          }
+                        }
+                      },
+                      "AWG_-_CON_-_02_NoValidTrucks_HTTP_Move_OSS_Email": {
+                        "runAfter": {
+                          "AWG_-_CON_-_02_NoValidTrucks_HTTP_Mark_OSS_Read": [
+                            "Succeeded"
+                          ]
+                        },
+                        "type": "OpenApiConnection",
+                        "inputs": {
+                          "parameters": {
+                            "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('AWG_-_CON_-_02_Compose_Resolved_Current_OSS_Immutable_ID'))}/move",
+                            "Method": "POST",
+                            "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                            "Body": "@concat('{\"destinationId\":\"', outputs('AWG_-_CON_-_02_Target_AWG_CON_02_Folder_Id'), '\"}')",
+                            "ContentType": "application/json"
+                          },
+                          "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                            "operationId": "HttpRequest",
+                            "connectionName": "shared_office365"
+                          }
+                        }
+                      },
+                      "AWG_-_CON_-_02_NoValidTrucks_Delete_Tracking_Record": {
+                        "runAfter": {
+                          "AWG_-_CON_-_02_NoValidTrucks_HTTP_Move_OSS_Email": [
+                            "Succeeded"
+                          ]
+                        },
+                        "type": "OpenApiConnection",
+                        "inputs": {
+                          "parameters": {
+                            "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+                            "table": "70ed8abc-c524-4142-9d8a-86f70ced426c",
+                            "id": "@first(body('AWG_-_CON_-_02_Get_Tracking_Item')?['value'])?['ID']"
+                          },
+                          "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                            "operationId": "DeleteItem",
+                            "connectionName": "shared_sharepointonline"
+                          }
+                        }
+                      },
+                      "AWG_-_CON_-_02_NoValidTrucks_Terminate": {
+                        "runAfter": {
+                          "AWG_-_CON_-_02_NoValidTrucks_Delete_Tracking_Record": [
+                            "Succeeded"
+                          ]
+                        },
+                        "type": "Terminate",
+                        "inputs": {
+                          "runStatus": "Succeeded"
+                        }
+                      }
+                    }
+                  },
+                  "expression": {
+                    "and": [
+                      {
+                        "greater": [
+                          "@length(outputs('Compose_Distinct_Truck_List'))",
+                          0
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "If"
+                }
+              },
+              "else": {
+                "actions": {}
+              },
+              "expression": {
+                "and": [
+                  {
+                    "equals": [
+                      "@outputs('Compose_HasPreviousConsolidationCheck')",
+                      false
+                    ]
+                  }
+                ]
+              },
+              "type": "If"
+            }
+          },
+          "runAfter": {
+            "Compose_HasPreviousConsolidationCheck": [
+              "Succeeded"
+            ]
+          },
+          "else": {
+            "actions": {
+              "AWG_-_CON_-_02_NoConsol_HTTP_Mark_OSS_Read": {
+                "type": "OpenApiConnection",
+                "inputs": {
+                  "parameters": {
+                    "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('AWG_-_CON_-_02_Compose_Resolved_Current_OSS_Immutable_ID'))}",
+                    "Method": "PATCH",
+                    "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                    "Body": "{\"isRead\":true}",
+                    "ContentType": "application/json"
+                  },
+                  "host": {
+                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                    "operationId": "HttpRequest",
+                    "connectionName": "shared_office365"
+                  }
+                }
+              },
+              "AWG_-_CON_-_02_NoConsol_HTTP_Move_OSS_Email_to_Complete": {
+                "runAfter": {
+                  "AWG_-_CON_-_02_NoConsol_HTTP_Mark_OSS_Read": [
+                    "Succeeded"
+                  ]
+                },
+                "type": "OpenApiConnection",
+                "inputs": {
+                  "parameters": {
+                    "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('AWG_-_CON_-_02_Compose_Resolved_Current_OSS_Immutable_ID'))}/move",
+                    "Method": "POST",
+                    "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                    "Body": "@concat('{\"destinationId\":\"', outputs('AWG_-_CON_-_02_Target_AWG_CON_02_Folder_Id'), '\"}')",
+                    "ContentType": "application/json"
+                  },
+                  "host": {
+                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                    "operationId": "HttpRequest",
+                    "connectionName": "shared_office365"
+                  }
+                }
+              },
+              "AWG_-_CON_-_02_NoConsol_Delete_Tracking_Record": {
+                "runAfter": {
+                  "AWG_-_CON_-_02_NoConsol_HTTP_Move_OSS_Email_to_Complete": [
+                    "Succeeded"
+                  ]
+                },
+                "type": "OpenApiConnection",
+                "inputs": {
+                  "parameters": {
+                    "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+                    "table": "70ed8abc-c524-4142-9d8a-86f70ced426c",
+                    "id": "@first(body('AWG_-_CON_-_02_Get_Tracking_Item')?['value'])?['ID']"
+                  },
+                  "host": {
+                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                    "operationId": "DeleteItem",
+                    "connectionName": "shared_sharepointonline"
+                  }
+                }
+              },
+              "AWG_-_CON_-_02_NoConsol_Terminate": {
+                "runAfter": {
+                  "AWG_-_CON_-_02_NoConsol_Delete_Tracking_Record": [
+                    "Succeeded"
+                  ]
+                },
+                "type": "Terminate",
+                "inputs": {
+                  "runStatus": "Succeeded"
+                }
+              }
+            }
+          },
+          "expression": {
+            "and": [
+              {
+                "contains": [
+                  "@outputs('Compose_CurrentEmailOnly')",
+                  "<table"
+                ]
+              },
+              {
+                "contains": [
+                  "@outputs('Compose_CurrentEmailOnly')",
+                  "truck"
+                ]
+              },
+              {
+                "contains": [
+                  "@outputs('Compose_CurrentEmailOnly')",
+                  "po"
+                ]
+              },
+              {
+                "not": {
+                  "contains": [
+                    "@outputs('Compose_CurrentEmailOnly')",
+                    "customer name"
+                  ]
+                }
+              },
+              {
+                "not": {
+                  "contains": [
+                    "@outputs('Compose_CurrentEmailOnly')",
+                    "shipment number"
+                  ]
+                }
+              },
+              {
+                "not": {
+                  "contains": [
+                    "@outputs('Compose_CurrentEmailOnly')",
+                    "pom code"
+                  ]
+                }
+              },
+              {
+                "not": {
+                  "contains": [
+                    "@outputs('Compose_CurrentEmailOnly')",
+                    "so #"
+                  ]
+                }
+              },
+              {
+                "not": {
+                  "contains": [
+                    "@outputs('Compose_CurrentEmailOnly')",
+                    "delivery number"
+                  ]
+                }
+              },
+              {
+                "not": {
+                  "contains": [
+                    "@outputs('Compose_CurrentEmailOnly')",
+                    "is not a consolidation regards"
+                  ]
+                }
+              }
+            ]
+          },
+          "type": "If"
+        }
+      },
+      "outputs": {}
+    },
+    "templateName": null
+  },
+  "schemaVersion": "1.0.0.0"
+}

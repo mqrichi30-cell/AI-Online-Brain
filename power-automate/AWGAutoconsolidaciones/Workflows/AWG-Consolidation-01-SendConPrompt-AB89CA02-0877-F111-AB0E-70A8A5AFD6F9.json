@@ -1,0 +1,1616 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_office365": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "awg_sharedoffice365_37d40"
+        },
+        "api": {
+          "name": "shared_office365"
+        }
+      },
+      "shared_sharepointonline": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "awg_sharedsharepointonline_6e67f"
+        },
+        "api": {
+          "name": "shared_sharepointonline"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        }
+      },
+      "triggers": {
+        "When_a_new_email_arrives_(V3)": {
+          "splitOn": "@triggerOutputs()?['body/value']",
+          "metadata": {
+            "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAYFina4AAA=": "Marín, Cristhofer - AWG + Wakefern",
+            "operationMetadataId": "772d1257-4a03-47f5-8b0e-77085e52f4d2"
+          },
+          "type": "OpenApiConnectionNotification",
+          "inputs": {
+            "parameters": {
+              "folderPath": "Id::AAMkAGMzNjc1ZDRmLTFlOTktNGQzNS04NTVmLTkwMDVkOWEyYmY0MQAuAAAAAACUFGw_S0XqRK5id50_416QAQCJMa30OofZSrcZSkuH_Y6QAAYFina4AAA="
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+              "operationId": "OnNewEmailV3",
+              "connectionName": "shared_office365"
+            }
+          }
+        }
+      },
+      "actions": {
+        "Compose_SenderEmail": {
+          "runAfter": {
+            "Initialize_variable": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "77ac39cd-98bc-4a98-b715-ccf0889996b8"
+          },
+          "type": "Compose",
+          "inputs": "@toLower(coalesce(triggerOutputs()?['body/from'], ''))"
+        },
+        "AWG_-_CON_-_01_Guard_OSSGenAI_Response": {
+          "actions": {
+            "Compose_FlowId_From_Body": {
+              "metadata": {
+                "operationMetadataId": "44616f48-5b59-4f67-bdd4-23b9499ee307"
+              },
+              "type": "Compose",
+              "inputs": "@if(contains(coalesce(triggerOutputs()?['body/body'], ''), 'AWG-FLOW-ID:'), trim(first(split(first(split(replace(replace(replace(last(split(coalesce(triggerOutputs()?['body/body'], ''), 'AWG-FLOW-ID:')), '&nbsp;', ' '), '&#160;', ' '), '</', '<'), '<')), '|'))), '')"
+            },
+            "Compose_ProcessType_From_Router_Response": {
+              "runAfter": {
+                "Compose_AI_Response_Is_Valid": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "9e2a3376-916c-453e-94b1-2bb95aaa1ce5"
+              },
+              "type": "Compose",
+              "inputs": "@if(not(outputs('Compose_AI_Response_Is_Valid')), 'AI Failed', if(contains(toLower(outputs('Compose_AI_Answer_Only')), 'wakefern appointments'), 'Wakefern Appointments', if(contains(toLower(outputs('Compose_AI_Answer_Only')), 'no match'), 'No Match', if(contains(toLower(outputs('Compose_AI_Answer_Only')), 'cancellation'), 'Cancellation', if(contains(toLower(outputs('Compose_AI_Answer_Only')), 'consolidation'), 'Consolidation', 'No Match')))))"
+            },
+            "AWG_-_CON_-_01_Get_Router_Tracking_Item": {
+              "runAfter": {
+                "Compose_Correlation_FlowId": [
+                  "Succeeded"
+                ],
+                "AWG_-_CON_-_01_Target_Email_Route_00_Folder_Id": [
+                  "Succeeded"
+                ],
+                "AWG_-_CON_-_01_Target_AWG_CON_01_Folder_Id": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "89d33a86-f3f4-4739-8fea-ffd0888d4e32"
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+                  "table": "70ed8abc-c524-4142-9d8a-86f70ced426c",
+                  "$filter": "FlowId eq '@{replace(outputs('Compose_Correlation_FlowId'),'''','''''')}' and Phase eq '00-RouterSent'",
+                  "$top": 1
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                  "operationId": "GetItems",
+                  "connectionName": "shared_sharepointonline"
+                }
+              }
+            },
+            "AWG_-_CON_-_01_Guard_Router_Tracking_Found": {
+              "actions": {
+                "AWG_-_CON_-_01_Update_Router_Classification_Result": {
+                  "metadata": {
+                    "operationMetadataId": "c2cf51a3-b30e-439d-bbb1-26d9dc9f27ab"
+                  },
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "parameters": {
+                      "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+                      "table": "70ed8abc-c524-4142-9d8a-86f70ced426c",
+                      "id": "@first(body('AWG_-_CON_-_01_Get_Router_Tracking_Item')?['value'])?['ID']",
+                      "item/Status": "@outputs('Compose_ProcessType_From_Router_Response')",
+                      "item/Phase": "00-RouterClassified",
+                      "item/PhaseSince": "@utcNow()"
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                      "operationId": "PatchItem",
+                      "connectionName": "shared_sharepointonline"
+                    }
+                  }
+                },
+                "Compose_Original_Immutable_ID_From_Router": {
+                  "runAfter": {
+                    "AWG_-_CON_-_01_Update_Router_Classification_Result": [
+                      "Succeeded"
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "e0619773-3011-4cff-952b-2b027a64aaa1"
+                  },
+                  "type": "Compose",
+                  "inputs": "@first(body('AWG_-_CON_-_01_Get_Router_Tracking_Item')?['value'])?['OriginalMessageId']"
+                },
+                "Compose_Original_Conversation_ID_From_Router": {
+                  "runAfter": {
+                    "Compose_Original_Immutable_ID_From_Router": [
+                      "Succeeded"
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "8463f8a0-e550-4cfa-8abe-3cb4a68d5a97"
+                  },
+                  "type": "Compose",
+                  "inputs": "@first(body('AWG_-_CON_-_01_Get_Router_Tracking_Item')?['value'])?['OriginalConversationId']"
+                },
+                "Compose_Original_Subject_From_Router": {
+                  "runAfter": {
+                    "Compose_Original_Conversation_ID_From_Router": [
+                      "Succeeded"
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "05fedbd5-f529-45b1-9a3d-b3ee1687e444"
+                  },
+                  "type": "Compose",
+                  "inputs": "@first(body('AWG_-_CON_-_01_Get_Router_Tracking_Item')?['value'])?['OriginalSubject']"
+                },
+                "AWG_-_CON_-_01_HTTP_Get_Original_From_EmailRoute00_By_ConversationId": {
+                  "runAfter": {
+                    "Compose_Original_Subject_From_Router": [
+                      "Succeeded"
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "13fc06a9-e240-4691-8fa7-12ecdfb15968"
+                  },
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "parameters": {
+                      "Uri": "@concat('https://graph.microsoft.com/v1.0/me/mailFolders/', encodeUriComponent(outputs('AWG_-_CON_-_01_Target_Email_Route_00_Folder_Id')), '/messages?$top=50&$select=id,subject,from,conversationId,receivedDateTime,parentFolderId,categories')",
+                      "Method": "GET",
+                      "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                      "ContentType": "application/json"
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                      "operationId": "HttpRequest",
+                      "connectionName": "shared_office365"
+                    }
+                  }
+                },
+                "Compose_Resolved_Original_Immutable_ID": {
+                  "runAfter": {
+                    "AWG_-_CON_-_01_Filter_Original_From_EmailRoute00_By_ConversationId": [
+                      "Succeeded"
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "69c5b32e-2d07-41ff-9925-531bd86082e4"
+                  },
+                  "type": "Compose",
+                  "inputs": "@if(greater(length(body('AWG_-_CON_-_01_Filter_Original_From_EmailRoute00_By_ConversationId')), 0), first(body('AWG_-_CON_-_01_Filter_Original_From_EmailRoute00_By_ConversationId'))?['id'], outputs('Compose_Original_Immutable_ID_From_Router'))"
+                },
+                "AWG_-_CON_-_01_Guard_ProcessType_Consolidation": {
+                  "actions": {
+                    "AWG_-_CON_-_01_Advance_To_IntakeSent": {
+                      "runAfter": {
+                        "DEBUG_-_Consolidation_Reply_Sent_Same_Conversation": [
+                          "Succeeded"
+                        ]
+                      },
+                      "metadata": {
+                        "operationMetadataId": "3185ca7a-4af2-4158-8430-cf533ce5da84"
+                      },
+                      "type": "OpenApiConnection",
+                      "inputs": {
+                        "parameters": {
+                          "dataset": "https://pgone.sharepoint.com/sites/NACSO-RegionalVMI",
+                          "table": "70ed8abc-c524-4142-9d8a-86f70ced426c",
+                          "id": "@first(body('AWG_-_CON_-_01_Get_Router_Tracking_Item')?['value'])?['ID']",
+                          "item/Status": "Consolidation",
+                          "item/Phase": "01-IntakeSent",
+                          "item/PhaseSince": "@utcNow()"
+                        },
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+                          "operationId": "PatchItem",
+                          "connectionName": "shared_sharepointonline"
+                        }
+                      }
+                    },
+                    "AWG_-_CON_-_01_HTTP_Patch_Original_By_Immutable_ID": {
+                      "runAfter": {
+                        "AWG_-_CON_-_01_Advance_To_IntakeSent": [
+                          "Succeeded"
+                        ]
+                      },
+                      "metadata": {
+                        "operationMetadataId": "4b176eb8-a386-4cce-befe-6ca91154ea5a"
+                      },
+                      "type": "OpenApiConnection",
+                      "inputs": {
+                        "parameters": {
+                          "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Resolved_Original_Immutable_ID'))}",
+                          "Method": "PATCH",
+                          "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                          "Body": "@concat('{\"isRead\":false,\"categories\":', concat('[\"', join(union(coalesce(if(greater(length(body('AWG_-_CON_-_01_Filter_Original_From_EmailRoute00_By_ConversationId')), 0), first(body('AWG_-_CON_-_01_Filter_Original_From_EmailRoute00_By_ConversationId'))?['categories'], json('[]')), json('[]')), createArray('Cristhofer Marín', 'Consolidation')), '\",\"'), '\"]'), '}')",
+                          "ContentType": "application/json"
+                        },
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                          "operationId": "HttpRequest",
+                          "connectionName": "shared_office365"
+                        }
+                      }
+                    },
+                    "AWG_-_CON_-_01_HTTP_Move_Original_to_AWG_Complete_By_Immutable_ID": {
+                      "runAfter": {
+                        "AWG_-_CON_-_01_HTTP_Patch_Original_By_Immutable_ID": [
+                          "Succeeded"
+                        ]
+                      },
+                      "metadata": {
+                        "operationMetadataId": "98468722-b364-4dd2-8b41-e974f0a4fa1d"
+                      },
+                      "type": "OpenApiConnection",
+                      "inputs": {
+                        "parameters": {
+                          "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Resolved_Original_Immutable_ID'))}/move",
+                          "Method": "POST",
+                          "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                          "Body": "@concat('{\"destinationId\":\"', outputs('AWG_-_CON_-_01_Target_AWG_CON_01_Folder_Id'), '\"}')",
+                          "ContentType": "application/json"
+                        },
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                          "operationId": "HttpRequest",
+                          "connectionName": "shared_office365"
+                        }
+                      }
+                    },
+                    "AWG_-_CON_-_01_Consolidation_Guard_Current_OSS_Found": {
+                      "actions": {
+                        "AWG_-_CON_-_01_Consolidation_HTTP_Mark_Current_OSS_Read": {
+                          "metadata": {
+                            "operationMetadataId": "f2892285-62ca-45a6-85df-855a1890dcc2"
+                          },
+                          "type": "OpenApiConnection",
+                          "inputs": {
+                            "parameters": {
+                              "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Resolved_Current_OSS_Immutable_ID'))}",
+                              "Method": "PATCH",
+                              "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                              "Body": "@concat('{\"isRead\":false,\"categories\":', concat('[\"', join(union(coalesce(triggerOutputs()?['body/categories'], json('[]')), createArray('Consolidation')), '\",\"'), '\"]'), '}')",
+                              "ContentType": "application/json"
+                            },
+                            "host": {
+                              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                              "operationId": "HttpRequest",
+                              "connectionName": "shared_office365"
+                            }
+                          }
+                        },
+                        "AWG_-_CON_-_01_Consolidation_HTTP_Move_Current_OSS_to_AWG_Complete": {
+                          "runAfter": {
+                            "AWG_-_CON_-_01_Consolidation_HTTP_Mark_Current_OSS_Read": [
+                              "Succeeded"
+                            ]
+                          },
+                          "metadata": {
+                            "operationMetadataId": "d92515b1-3df0-4394-8116-aacd8d132a49"
+                          },
+                          "type": "OpenApiConnection",
+                          "inputs": {
+                            "parameters": {
+                              "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Resolved_Current_OSS_Immutable_ID'))}/move",
+                              "Method": "POST",
+                              "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                              "Body": "@concat('{\"destinationId\":\"', outputs('AWG_-_CON_-_01_Target_AWG_CON_01_Folder_Id'), '\"}')",
+                              "ContentType": "application/json"
+                            },
+                            "host": {
+                              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                              "operationId": "HttpRequest",
+                              "connectionName": "shared_office365"
+                            }
+                          }
+                        }
+                      },
+                      "runAfter": {
+                        "AWG_-_CON_-_01_HTTP_Move_Original_to_AWG_Complete_By_Immutable_ID": [
+                          "Succeeded"
+                        ]
+                      },
+                      "else": {
+                        "actions": {
+                          "DEBUG_-_Consolidation_Current_OSS_Not_Found": {
+                            "metadata": {
+                              "operationMetadataId": "828f8e48-7c70-4ae0-94a6-cfab62268fb8"
+                            },
+                            "type": "Compose",
+                            "inputs": "@concat('Current OSS not found after consolidation original handling. Check DEBUG Current OSS Lookup. ConversationId=', string(outputs('Compose_Current_OSS_Conversation_ID_From_Trigger')), ' ResolvedId=', string(outputs('Compose_Resolved_Current_OSS_Immutable_ID')))"
+                          }
+                        }
+                      },
+                      "expression": {
+                        "and": [
+                          {
+                            "not": {
+                              "equals": [
+                                "@outputs('Compose_Resolved_Current_OSS_Immutable_ID')",
+                                ""
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      "metadata": {
+                        "operationMetadataId": "b4b717c5-0e34-4b08-8dc3-8fb1244919ee"
+                      },
+                      "type": "If"
+                    },
+                    "AWG_-_CON_-_01_HTTP_Reply_Current_OSS_to_OSSGenAI_SameConversation": {
+                      "metadata": {
+                        "operationMetadataId": "500d3526-3271-4aa8-a98b-c9447cf3f8e6"
+                      },
+                      "type": "OpenApiConnection",
+                      "inputs": {
+                        "parameters": {
+                          "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Resolved_Current_OSS_Immutable_ID'))}/reply",
+                          "Method": "POST",
+                          "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                          "Body": "@outputs('AWG_-_CON_-_01_Compose_OSSGenAI_Request')",
+                          "ContentType": "application/json"
+                        },
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                          "operationId": "HttpRequest",
+                          "connectionName": "shared_office365"
+                        }
+                      },
+                      "runAfter": {
+                        "AWG_-_CON_-_01_Aprobacion_Guard_Aprobado": [
+                          "Succeeded"
+                        ]
+                      }
+                    },
+                    "DEBUG_-_Consolidation_Reply_Sent_Same_Conversation": {
+                      "runAfter": {
+                        "AWG_-_CON_-_01_HTTP_Reply_Current_OSS_to_OSSGenAI_SameConversation": [
+                          "Succeeded"
+                        ]
+                      },
+                      "metadata": {
+                        "operationMetadataId": "388ce197-e803-4561-9dc7-db4414bfff7a"
+                      },
+                      "type": "Compose",
+                      "inputs": "@concat('Replied to current OSS message instead of forwarding original. CurrentOSSId=', string(outputs('Compose_Resolved_Current_OSS_Immutable_ID')), ' | OriginalId=', string(outputs('Compose_Resolved_Original_Immutable_ID')), ' | FlowId=', string(outputs('Compose_Correlation_FlowId')))"
+                    },
+                    "AWG_-_CON_-_01_Compose_OSSGenAI_Request": {
+                      "runAfter": {},
+                      "type": "Compose",
+                      "inputs": {
+                        "message": {
+                          "toRecipients": [
+                            {
+                              "emailAddress": {
+                                "address": "ossgenai.im@pg.com"
+                              }
+                            }
+                          ],
+                          "ccRecipients": [],
+                          "bccRecipients": []
+                        },
+                        "comment": "FOR ROUTING USE WORKFLOW=na_om_data_agent (AskOM)<br><br>\n<strong>IMPORTANT - SAME THREAD READ SCOPE:</strong> This is a direct reply inside the existing Outlook conversation, not a forward. Use the latest actual customer email available in the reply history below this prompt. Do not use the subject alone. Ignore system-generated status/error emails, process completion emails, signatures, disclaimers, and older unrelated replies.<br><br>\n<strong>Mandatory validation before extracting:</strong><br>\nOnly continue if the actual customer email contains BOTH:<br>\n1) a real request to ride-with, ship-with, consolidate, attach/load with another PO, or make one PO ride with another PO; and<br>\n2) at least one explicit PO number tied to PO context such as PO, PO#, PO #, purchase order, order, main PO, rider PO, or a PO table/list.<br><br>\nIf the email is a system/status/error notification, or if either requirement is missing, respond exactly: Is not a consolidation<br><br>\nIf it passes validation, extract the consolidation details from the original customer email in this same conversation.<br><br>\nReturn a table with exactly 2 columns: Truck # and PO #<br>\nEach row must contain exactly one PO only. Never place multiple PO numbers in the same PO # cell. If multiple POs belong to the same truck, create one separate row per PO and repeat the same Truck # value on each row.<br>\nRemove all internal spaces from every PO number (e.g. \"07 291073\" → \"07291073\"). Output PO numbers as a single unbroken string with no spaces.<br>\nUse Truck #1 as standard. If the customer sends more than one consolidation, use Truck #2, Truck #3, etc.<br>\n@{variables('SignatureHtml')}\n<p style=\"font-size:1px;color:#ffffff;line-height:1px\">AWG-FLOW-ID: @{outputs('Compose_Correlation_FlowId')} | AWG-STEP: CONSOLIDATION_CONFIRM</p>"
+                      }
+                    },
+                    "AWG_-_CON_-_01_Aprobacion_Get_Aprobador": {
+                      "runAfter": {
+                        "AWG_-_CON_-_01_Compose_OSSGenAI_Request": [
+                          "Succeeded"
+                        ]
+                      },
+                      "type": "OpenApiConnection",
+                      "inputs": {
+                        "parameters": {
+                          "Uri": "https://graph.microsoft.com/v1.0/me?$select=mail,userPrincipalName",
+                          "Method": "GET"
+                        },
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                          "operationId": "HttpRequest",
+                          "connectionName": "shared_office365"
+                        }
+                      }
+                    },
+                    "AWG_-_CON_-_01_Aprobacion_Enviar_Solicitud": {
+                      "runAfter": {
+                        "AWG_-_CON_-_01_Aprobacion_Get_Aprobador": [
+                          "Succeeded"
+                        ]
+                      },
+                      "limit": {
+                        "timeout": "P1D"
+                      },
+                      "type": "OpenApiConnectionWebhook",
+                      "inputs": {
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                          "operationId": "SendMailWithOptions",
+                          "connectionName": "shared_office365"
+                        },
+                        "parameters": {
+                          "optionsEmailSubscription/Message/To": "@{coalesce(body('AWG_-_CON_-_01_Aprobacion_Get_Aprobador')?['mail'], body('AWG_-_CON_-_01_Aprobacion_Get_Aprobador')?['userPrincipalName'])}",
+                          "optionsEmailSubscription/Message/Subject": "[AWG CON] Aprobación requerida - envío a OSSGenAI - Consolidación 01 (extraer Truck # / PO #) - @{coalesce(outputs('Compose_Original_Subject_From_Router'), '')}",
+                          "optionsEmailSubscription/Message/Options": "Aprobar, Rechazar",
+                          "optionsEmailSubscription/Message/HeaderText": "Aprobación requerida: envío a OSSGenAI",
+                          "optionsEmailSubscription/Message/SelectionText": "¿Apruebas enviar este correo a OSSGenAI?",
+                          "optionsEmailSubscription/Message/Body": "<p>Hola,</p><p>El flujo <b>AWG - Consolidation - 01 - Send Con Prompt</b> está listo para enviar un correo a <b>ossgenai.im@pg.com</b> y necesita tu aprobación.</p><table cellpadding=\"4\" style=\"border-collapse:collapse;font-family:Segoe UI,Arial,sans-serif;font-size:13px\"><tr><td><b>Paso</b></td><td>Consolidación 01 (extraer Truck # / PO #)</td></tr><tr><td><b>Para</b></td><td>ossgenai.im@pg.com</td></tr><tr><td><b>Asunto del hilo</b></td><td>@{coalesce(outputs('Compose_Original_Subject_From_Router'), '')}</td></tr><tr><td><b>Tipo de envío</b></td><td>Respuesta en el mismo hilo (sobre la respuesta actual de OSSGenAI, incluye historial).</td></tr><tr><td><b>Correo original</b></td><td>Correo original del cliente (carpeta Email Route 00).</td></tr></table><p><b>Aprobar</b>: se envía el correo tal como aparece abajo y el flujo continúa.<br><b>Rechazar</b>: no se envía nada, no se notifica a nadie y el correo original vuelve como no leído a la carpeta <i>Marín, Cristhofer - AWG + Wakefern</i>.<br>Si no respondes en 24 horas se trata como <b>Rechazar</b>.</p><hr><p><b>Contenido que se enviará a OSSGenAI:</b></p><div style=\"border-left:4px solid #0078d4;padding:8px 12px;background:#f6f8fa\">@{outputs('AWG_-_CON_-_01_Compose_OSSGenAI_Request')?['comment']}</div>",
+                          "optionsEmailSubscription/Message/Importance": "High",
+                          "optionsEmailSubscription/Message/UseOnlyHTMLMessage": true,
+                          "optionsEmailSubscription/Message/HideHTMLMessage": false,
+                          "optionsEmailSubscription/Message/ShowHTMLConfirmationDialog": false
+                        }
+                      }
+                    },
+                    "AWG_-_CON_-_01_Aprobacion_Guard_Aprobado": {
+                      "runAfter": {
+                        "AWG_-_CON_-_01_Aprobacion_Enviar_Solicitud": [
+                          "Succeeded",
+                          "Failed",
+                          "TimedOut",
+                          "Skipped"
+                        ]
+                      },
+                      "type": "If",
+                      "expression": {
+                        "and": [
+                          {
+                            "equals": [
+                              "@actions('AWG_-_CON_-_01_Aprobacion_Enviar_Solicitud')?['status']",
+                              "Succeeded"
+                            ]
+                          },
+                          {
+                            "equals": [
+                              "@coalesce(actions('AWG_-_CON_-_01_Aprobacion_Enviar_Solicitud')?['outputs']?['body']?['SelectedOption'], '')",
+                              "Aprobar"
+                            ]
+                          }
+                        ]
+                      },
+                      "actions": {
+                        "AWG_-_CON_-_01_Aprobacion_Aprobado": {
+                          "runAfter": {},
+                          "type": "Compose",
+                          "inputs": "Aprobado por @{coalesce(actions('AWG_-_CON_-_01_Aprobacion_Enviar_Solicitud')?['outputs']?['body']?['UserEmailAddress'], '')}"
+                        }
+                      },
+                      "else": {
+                        "actions": {
+                          "AWG_-_CON_-_01_Aprobacion_Rechazo_Get_Original": {
+                            "runAfter": {},
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                              "parameters": {
+                                "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Resolved_Original_Immutable_ID'))}?$select=id,parentFolderId",
+                                "Method": "GET",
+                                "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                "ContentType": "application/json"
+                              },
+                              "host": {
+                                "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                "operationId": "HttpRequest",
+                                "connectionName": "shared_office365"
+                              }
+                            }
+                          },
+                          "AWG_-_CON_-_01_Aprobacion_Rechazo_Guard_Original_Fuera_De_Carpeta": {
+                            "runAfter": {
+                              "AWG_-_CON_-_01_Aprobacion_Rechazo_Get_Original": [
+                                "Succeeded"
+                              ]
+                            },
+                            "type": "If",
+                            "expression": {
+                              "and": [
+                                {
+                                  "not": {
+                                    "equals": [
+                                      "@body('AWG_-_CON_-_01_Aprobacion_Rechazo_Get_Original')?['parentFolderId']",
+                                      "@outputs('AWG_-_CON_-_01_Target_Client_Folder_Id')"
+                                    ]
+                                  }
+                                }
+                              ]
+                            },
+                            "actions": {
+                              "AWG_-_CON_-_01_Aprobacion_Rechazo_Move_Original_To_Client_Folder": {
+                                "type": "OpenApiConnection",
+                                "inputs": {
+                                  "parameters": {
+                                    "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Resolved_Original_Immutable_ID'))}/move",
+                                    "Method": "POST",
+                                    "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                    "Body": "@concat('{\"destinationId\":\"', outputs('AWG_-_CON_-_01_Target_Client_Folder_Id'), '\"}')",
+                                    "ContentType": "application/json"
+                                  },
+                                  "host": {
+                                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                    "operationId": "HttpRequest",
+                                    "connectionName": "shared_office365"
+                                  }
+                                }
+                              }
+                            },
+                            "else": {
+                              "actions": {}
+                            }
+                          },
+                          "AWG_-_CON_-_01_Aprobacion_Rechazo_Mark_Original_Unread": {
+                            "runAfter": {
+                              "AWG_-_CON_-_01_Aprobacion_Rechazo_Guard_Original_Fuera_De_Carpeta": [
+                                "Succeeded",
+                                "Failed",
+                                "Skipped"
+                              ]
+                            },
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                              "parameters": {
+                                "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Resolved_Original_Immutable_ID'))}",
+                                "Method": "PATCH",
+                                "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                "Body": "{\"isRead\":false}",
+                                "ContentType": "application/json"
+                              },
+                              "host": {
+                                "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                "operationId": "HttpRequest",
+                                "connectionName": "shared_office365"
+                              }
+                            }
+                          },
+                          "AWG_-_CON_-_01_Aprobacion_Rechazo_Terminate": {
+                            "runAfter": {
+                              "AWG_-_CON_-_01_Aprobacion_Rechazo_Mark_Original_Unread": [
+                                "Succeeded",
+                                "Failed",
+                                "Skipped"
+                              ]
+                            },
+                            "type": "Terminate",
+                            "inputs": {
+                              "runStatus": "Cancelled"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "runAfter": {
+                    "Compose_Resolved_Original_Immutable_ID": [
+                      "Succeeded"
+                    ]
+                  },
+                  "else": {
+                    "actions": {
+                      "AWG_-_CON_-_01_NotConsolidation_HTTP_Move_Original_to_Client_Root": {
+                        "metadata": {
+                          "operationMetadataId": "1cc33dcd-1805-43af-90e4-07eb98bea5ba"
+                        },
+                        "type": "OpenApiConnection",
+                        "inputs": {
+                          "parameters": {
+                            "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Resolved_Original_Immutable_ID'))}/move",
+                            "Method": "POST",
+                            "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                            "Body": "@concat('{\"destinationId\":\"', outputs('AWG_-_CON_-_01_Target_Client_Folder_Id'), '\"}')",
+                            "ContentType": "application/json"
+                          },
+                          "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                            "operationId": "HttpRequest",
+                            "connectionName": "shared_office365"
+                          }
+                        }
+                      },
+                      "AWG_-_CON_-_01_NotConsolidation_HTTP_Mark_Original_Unread": {
+                        "runAfter": {
+                          "AWG_-_CON_-_01_NotConsolidation_HTTP_Move_Original_to_Client_Root": [
+                            "Succeeded"
+                          ]
+                        },
+                        "metadata": {
+                          "operationMetadataId": "mark-original-unread-after-return-to-awg-folder"
+                        },
+                        "type": "OpenApiConnection",
+                        "inputs": {
+                          "parameters": {
+                            "Uri": "v1.0/me/messages/@{encodeUriComponent(body('AWG_-_CON_-_01_NotConsolidation_HTTP_Move_Original_to_Client_Root')?['id'])}",
+                            "Method": "PATCH",
+                            "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                            "Body": "@concat('{\"isRead\":false,\"categories\":', concat('[\"', join(union(coalesce(body('AWG_-_CON_-_01_NotConsolidation_HTTP_Move_Original_to_Client_Root')?['categories'], json('[]')), createArray('Cristhofer Marín', outputs('Compose_ProcessType_From_Router_Response'))), '\",\"'), '\"]'), '}')",
+                            "ContentType": "application/json"
+                          },
+                          "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                            "operationId": "HttpRequest",
+                            "connectionName": "shared_office365"
+                          }
+                        }
+                      },
+                      "AWG_-_CON_-_01_NotConsolidation_Guard_Current_OSS_Found": {
+                        "actions": {
+                          "AWG_-_CON_-_01_NotConsolidation_HTTP_Mark_Current_OSS_Read": {
+                            "metadata": {
+                              "operationMetadataId": "26dad19b-3949-4c92-a8c0-aceba69118fa"
+                            },
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                              "parameters": {
+                                "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Resolved_Current_OSS_Immutable_ID'))}",
+                                "Method": "PATCH",
+                                "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                "Body": "@concat('{\"isRead\":true,\"categories\":', if(contains(coalesce(triggerOutputs()?['body/categories'], json('[]')), 'Consolidation'), '[\"Consolidation\"]', '[]'), '}')",
+                                "ContentType": "application/json"
+                              },
+                              "host": {
+                                "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                "operationId": "HttpRequest",
+                                "connectionName": "shared_office365"
+                              }
+                            }
+                          },
+                          "AWG_-_CON_-_01_NotConsolidation_HTTP_Move_Current_OSS_to_AWG_Complete": {
+                            "runAfter": {
+                              "AWG_-_CON_-_01_NotConsolidation_HTTP_Mark_Current_OSS_Read": [
+                                "Succeeded"
+                              ]
+                            },
+                            "metadata": {
+                              "operationMetadataId": "a3482059-17f2-4bb4-b306-8a3205daf0c9"
+                            },
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                              "parameters": {
+                                "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Resolved_Current_OSS_Immutable_ID'))}/move",
+                                "Method": "POST",
+                                "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                "Body": "@concat('{\"destinationId\":\"', outputs('AWG_-_CON_-_01_Target_AWG_CON_01_Folder_Id'), '\"}')",
+                                "ContentType": "application/json"
+                              },
+                              "host": {
+                                "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                "operationId": "HttpRequest",
+                                "connectionName": "shared_office365"
+                              }
+                            }
+                          }
+                        },
+                        "runAfter": {
+                          "AWG_-_CON_-_01_NotConsolidation_HTTP_Mark_Original_Unread": [
+                            "Succeeded"
+                          ]
+                        },
+                        "else": {
+                          "actions": {
+                            "DEBUG_-_NotConsolidation_Current_OSS_Not_Found": {
+                              "metadata": {
+                                "operationMetadataId": "9fc5ebc8-4108-475f-8403-94164b5cb589"
+                              },
+                              "type": "Compose",
+                              "inputs": "@concat('Current OSS not found for non-consolidation. Original was handled, but OSS was not patched/moved. ConversationId=', string(outputs('Compose_Current_OSS_Conversation_ID_From_Trigger')), ' ResolvedId=', string(outputs('Compose_Resolved_Current_OSS_Immutable_ID')))"
+                            }
+                          }
+                        },
+                        "expression": {
+                          "and": [
+                            {
+                              "not": {
+                                "equals": [
+                                  "@outputs('Compose_Resolved_Current_OSS_Immutable_ID')",
+                                  ""
+                                ]
+                              }
+                            }
+                          ]
+                        },
+                        "metadata": {
+                          "operationMetadataId": "6eacab74-ed6c-4cbb-9746-855b4835a242"
+                        },
+                        "type": "If"
+                      }
+                    }
+                  },
+                  "expression": {
+                    "and": [
+                      {
+                        "equals": [
+                          "@outputs('Compose_ProcessType_From_Router_Response')",
+                          "Consolidation"
+                        ]
+                      }
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "d0c3075b-45d3-4c80-b5e2-45055c7e387d"
+                  },
+                  "type": "If"
+                },
+                "AWG_-_CON_-_01_Filter_Original_From_EmailRoute00_By_ConversationId": {
+                  "runAfter": {
+                    "AWG_-_CON_-_01_HTTP_Get_Original_From_EmailRoute00_By_ConversationId": [
+                      "Succeeded"
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "acde148f-e388-4883-ada7-f275ea92a4a4"
+                  },
+                  "type": "Query",
+                  "inputs": {
+                    "from": "@body('AWG_-_CON_-_01_HTTP_Get_Original_From_EmailRoute00_By_ConversationId')?['value']",
+                    "where": "@and(equals(item()?['conversationId'], outputs('Compose_Original_Conversation_ID_From_Router')), not(equals(toLower(item()?['from']?['emailAddress']?['address']), 'ossgenai.im@pg.com')), not(equals(toLower(item()?['from']?['emailAddress']?['address']), 'pgcustservw2.im@pg.com')), not(equals(toLower(item()?['from']?['emailAddress']?['address']), 'pgcustservw2@pg.com')))"
+                  }
+                }
+              },
+              "runAfter": {
+                "AWG_-_CON_-_01_Get_Router_Tracking_Item": [
+                  "Succeeded"
+                ]
+              },
+              "else": {
+                "actions": {
+                  "AWG_-_CON_-_01_NoRouterTracking_Filter_Original_Candidates": {
+                    "runAfter": {
+                      "AWG_-_CON_-_01_NoRouterTracking_HTTP_List_AWGComplete_Messages": [
+                        "Succeeded"
+                      ]
+                    },
+                    "metadata": {
+                      "operationMetadataId": "8c92a82a-34fb-47e8-a9af-af29cdfceea5"
+                    },
+                    "type": "Query",
+                    "inputs": {
+                      "from": "@union(union(body('AWG_-_CON_-_01_NoRouterTracking_HTTP_List_EmailRoute00_Messages')?['value'], body('AWG_-_CON_-_01_NoRouterTracking_HTTP_List_ClientRoot_Messages')?['value']), body('AWG_-_CON_-_01_NoRouterTracking_HTTP_List_AWGComplete_Messages')?['value'])",
+                      "where": "@and(equals(item()?['conversationId'], outputs('Compose_Current_OSS_Conversation_ID_From_Trigger')), not(equals(toLower(item()?['from']?['emailAddress']?['address']), 'ossgenai.im@pg.com')), not(equals(toLower(item()?['from']?['emailAddress']?['address']), 'pgcustservw2.im@pg.com')), not(equals(toLower(item()?['from']?['emailAddress']?['address']), 'pgcustservw2@pg.com')))"
+                    }
+                  },
+                  "AWG_-_CON_-_01_NoRouterTracking_Guard_Original_Found": {
+                    "actions": {
+                      "Compose_NoRouterTracking_Original_Immutable_ID": {
+                        "metadata": {
+                          "operationMetadataId": "5ad76443-b136-48cf-8b9b-02e041452a3f"
+                        },
+                        "type": "Compose",
+                        "inputs": "@first(body('AWG_-_CON_-_01_NoRouterTracking_Filter_Original_Candidates'))?['id']"
+                      },
+                      "Compose_NoRouterTracking_Original_Parent_Folder_ID": {
+                        "runAfter": {
+                          "Compose_NoRouterTracking_Original_Immutable_ID": [
+                            "Succeeded"
+                          ]
+                        },
+                        "metadata": {
+                          "operationMetadataId": "44f6dc1f-5812-4e2f-996e-5335e9265faf"
+                        },
+                        "type": "Compose",
+                        "inputs": "@first(body('AWG_-_CON_-_01_NoRouterTracking_Filter_Original_Candidates'))?['parentFolderId']"
+                      },
+                      "AWG_-_CON_-_01_NoRouterTracking_Guard_Original_In_AWG_Complete": {
+                        "actions": {
+                          "AWG_-_CON_-_01_NoRouterTracking_Original_Already_In_AWG_Complete": {
+                            "metadata": {
+                              "operationMetadataId": "8781b9f9-9b71-4e83-8051-9cf61070cb46"
+                            },
+                            "type": "Compose",
+                            "inputs": "Original email is already in AWG Complete. Leave untouched."
+                          }
+                        },
+                        "runAfter": {
+                          "Compose_NoRouterTracking_Original_Parent_Folder_ID": [
+                            "Succeeded"
+                          ]
+                        },
+                        "else": {
+                          "actions": {
+                            "AWG_-_CON_-_01_NoRouterTracking_Guard_Original_In_Client_Root": {
+                              "actions": {
+                                "AWG_-_CON_-_01_NoRouterTracking_HTTP_Mark_Original_Unread_In_Client_Root": {
+                                  "metadata": {
+                                    "operationMetadataId": "ccd240ad-e68c-4d5c-b9a4-5e0dcbaf10a1"
+                                  },
+                                  "type": "OpenApiConnection",
+                                  "inputs": {
+                                    "parameters": {
+                                      "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_NoRouterTracking_Original_Immutable_ID'))}",
+                                      "Method": "PATCH",
+                                      "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                      "Body": "{\"isRead\":false}",
+                                      "ContentType": "application/json"
+                                    },
+                                    "host": {
+                                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                      "operationId": "HttpRequest",
+                                      "connectionName": "shared_office365"
+                                    }
+                                  }
+                                }
+                              },
+                              "else": {
+                                "actions": {
+                                  "AWG_-_CON_-_01_NoRouterTracking_HTTP_Move_Original_to_Client_Root": {
+                                    "metadata": {
+                                      "operationMetadataId": "d0ddb2f0-0f76-40b8-b44a-948e499912f7"
+                                    },
+                                    "type": "OpenApiConnection",
+                                    "inputs": {
+                                      "parameters": {
+                                        "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_NoRouterTracking_Original_Immutable_ID'))}/move",
+                                        "Method": "POST",
+                                        "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                        "Body": "@concat('{\"destinationId\":\"', outputs('AWG_-_CON_-_01_Target_Client_Folder_Id'), '\"}')",
+                                        "ContentType": "application/json"
+                                      },
+                                      "host": {
+                                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                        "operationId": "HttpRequest",
+                                        "connectionName": "shared_office365"
+                                      }
+                                    }
+                                  },
+                                  "AWG_-_CON_-_01_NoRouterTracking_HTTP_Mark_Moved_Original_Unread": {
+                                    "runAfter": {
+                                      "AWG_-_CON_-_01_NoRouterTracking_HTTP_Move_Original_to_Client_Root": [
+                                        "Succeeded"
+                                      ]
+                                    },
+                                    "metadata": {
+                                      "operationMetadataId": "176fdfe5-a90c-4668-ac5a-d7b8157c9d8c"
+                                    },
+                                    "type": "OpenApiConnection",
+                                    "inputs": {
+                                      "parameters": {
+                                        "Uri": "v1.0/me/messages/@{encodeUriComponent(body('AWG_-_CON_-_01_NoRouterTracking_HTTP_Move_Original_to_Client_Root')?['id'])}",
+                                        "Method": "PATCH",
+                                        "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                                        "Body": "{\"isRead\":false}",
+                                        "ContentType": "application/json"
+                                      },
+                                      "host": {
+                                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                        "operationId": "HttpRequest",
+                                        "connectionName": "shared_office365"
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              "expression": {
+                                "and": [
+                                  {
+                                    "equals": [
+                                      "@outputs('Compose_NoRouterTracking_Original_Parent_Folder_ID')",
+                                      "@outputs('AWG_-_CON_-_01_Target_Client_Folder_Id')"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "metadata": {
+                                "operationMetadataId": "23cbd46d-49ff-495a-a676-9e31d84f340a"
+                              },
+                              "type": "If"
+                            }
+                          }
+                        },
+                        "expression": {
+                          "and": [
+                            {
+                              "equals": [
+                                "@outputs('Compose_NoRouterTracking_Original_Parent_Folder_ID')",
+                                "@outputs('AWG_-_CON_-_01_Target_AWG_Complete_Folder_Id')"
+                              ]
+                            }
+                          ]
+                        },
+                        "metadata": {
+                          "operationMetadataId": "82c6785b-ac10-49a3-b29b-ee3f3a6e8122"
+                        },
+                        "type": "If"
+                      }
+                    },
+                    "runAfter": {
+                      "AWG_-_CON_-_01_NoRouterTracking_Filter_Original_Candidates": [
+                        "Succeeded"
+                      ]
+                    },
+                    "else": {
+                      "actions": {
+                        "AWG_-_CON_-_01_NoRouterTracking_Original_Not_Found": {
+                          "metadata": {
+                            "operationMetadataId": "97567f35-0c52-46d1-a6b4-34e3b9e22e12"
+                          },
+                          "type": "Compose",
+                          "inputs": "No original candidate found in the router thread. Only the current OSS response will be archived."
+                        }
+                      }
+                    },
+                    "expression": {
+                      "and": [
+                        {
+                          "greater": [
+                            "@length(body('AWG_-_CON_-_01_NoRouterTracking_Filter_Original_Candidates'))",
+                            0
+                          ]
+                        }
+                      ]
+                    },
+                    "metadata": {
+                      "operationMetadataId": "fa76d181-3e64-4bcc-893d-d5b68e55e8d9"
+                    },
+                    "type": "If"
+                  },
+                  "AWG_-_CON_-_01_NoRouterTracking_HTTP_List_EmailRoute00_Messages": {
+                    "metadata": {
+                      "operationMetadataId": "13fa654f-8f84-4a12-9376-d64287704fe3"
+                    },
+                    "type": "OpenApiConnection",
+                    "inputs": {
+                      "parameters": {
+                        "Uri": "@concat('https://graph.microsoft.com/v1.0/me/mailFolders/', encodeUriComponent(outputs('AWG_-_CON_-_01_Target_Email_Route_00_Folder_Id')), '/messages?$top=25&$select=id,subject,from,conversationId,parentFolderId,receivedDateTime')",
+                        "Method": "GET",
+                        "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                        "ContentType": "application/json"
+                      },
+                      "host": {
+                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                        "operationId": "HttpRequest",
+                        "connectionName": "shared_office365"
+                      }
+                    }
+                  },
+                  "AWG_-_CON_-_01_NoRouterTracking_HTTP_List_ClientRoot_Messages": {
+                    "runAfter": {
+                      "AWG_-_CON_-_01_NoRouterTracking_HTTP_List_EmailRoute00_Messages": [
+                        "Succeeded"
+                      ]
+                    },
+                    "metadata": {
+                      "operationMetadataId": "c321f0ac-94a3-4e7d-8315-1c043604ce56"
+                    },
+                    "type": "OpenApiConnection",
+                    "inputs": {
+                      "parameters": {
+                        "Uri": "@concat('https://graph.microsoft.com/v1.0/me/mailFolders/', encodeUriComponent(outputs('AWG_-_CON_-_01_Target_Client_Folder_Id')), '/messages?$top=25&$select=id,subject,from,conversationId,parentFolderId,receivedDateTime')",
+                        "Method": "GET",
+                        "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                        "ContentType": "application/json"
+                      },
+                      "host": {
+                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                        "operationId": "HttpRequest",
+                        "connectionName": "shared_office365"
+                      }
+                    }
+                  },
+                  "AWG_-_CON_-_01_NoRouterTracking_HTTP_List_AWGComplete_Messages": {
+                    "runAfter": {
+                      "AWG_-_CON_-_01_NoRouterTracking_HTTP_List_ClientRoot_Messages": [
+                        "Succeeded"
+                      ]
+                    },
+                    "metadata": {
+                      "operationMetadataId": "98826333-80e9-43e8-938a-335c4326f014"
+                    },
+                    "type": "OpenApiConnection",
+                    "inputs": {
+                      "parameters": {
+                        "Uri": "@concat('https://graph.microsoft.com/v1.0/me/mailFolders/', encodeUriComponent(outputs('AWG_-_CON_-_01_Target_AWG_Complete_Folder_Id')), '/messages?$top=25&$select=id,subject,from,conversationId,parentFolderId,receivedDateTime')",
+                        "Method": "GET",
+                        "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                        "ContentType": "application/json"
+                      },
+                      "host": {
+                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                        "operationId": "HttpRequest",
+                        "connectionName": "shared_office365"
+                      }
+                    }
+                  },
+                  "AWG_-_CON_-_01_NoRouterTracking_Guard_Current_OSS_Found": {
+                    "actions": {
+                      "AWG_-_CON_-_01_NoRouterTracking_HTTP_Mark_Current_OSS_Read": {
+                        "metadata": {
+                          "operationMetadataId": "a90d94c7-5959-4619-9647-bc5927c640f8"
+                        },
+                        "type": "OpenApiConnection",
+                        "inputs": {
+                          "parameters": {
+                            "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Resolved_Current_OSS_Immutable_ID'))}",
+                            "Method": "PATCH",
+                            "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                            "Body": "@concat('{\"isRead\":true,\"categories\":', if(contains(coalesce(triggerOutputs()?['body/categories'], json('[]')), 'Consolidation'), '[\"Consolidation\"]', '[]'), '}')",
+                            "ContentType": "application/json"
+                          },
+                          "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                            "operationId": "HttpRequest",
+                            "connectionName": "shared_office365"
+                          }
+                        }
+                      },
+                      "AWG_-_CON_-_01_NoRouterTracking_HTTP_Move_Current_OSS_to_AWG_Complete": {
+                        "runAfter": {
+                          "AWG_-_CON_-_01_NoRouterTracking_HTTP_Mark_Current_OSS_Read": [
+                            "Succeeded"
+                          ]
+                        },
+                        "metadata": {
+                          "operationMetadataId": "b4f3bc80-d4ac-40b6-b36a-71a4ad7ba19c"
+                        },
+                        "type": "OpenApiConnection",
+                        "inputs": {
+                          "parameters": {
+                            "Uri": "v1.0/me/messages/@{encodeUriComponent(outputs('Compose_Resolved_Current_OSS_Immutable_ID'))}/move",
+                            "Method": "POST",
+                            "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                            "Body": "@concat('{\"destinationId\":\"', outputs('AWG_-_CON_-_01_Target_AWG_CON_01_Folder_Id'), '\"}')",
+                            "ContentType": "application/json"
+                          },
+                          "host": {
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                            "operationId": "HttpRequest",
+                            "connectionName": "shared_office365"
+                          }
+                        }
+                      }
+                    },
+                    "runAfter": {
+                      "AWG_-_CON_-_01_NoRouterTracking_Guard_Original_Found": [
+                        "Succeeded"
+                      ]
+                    },
+                    "else": {
+                      "actions": {
+                        "DEBUG_-_NoRouterTracking_Current_OSS_Not_Found": {
+                          "metadata": {
+                            "operationMetadataId": "cacffaa0-2304-4d0c-8021-c8df872863a4"
+                          },
+                          "type": "Compose",
+                          "inputs": "@concat('Current OSS not found. Nothing patched/moved for OSS. Check DEBUG Current OSS Lookup. TriggerId=', string(coalesce(triggerOutputs()?['body/id'], triggerOutputs()?['body/Id'], '')), ' ConversationId=', string(outputs('Compose_Current_OSS_Conversation_ID_From_Trigger')), ' ResolvedId=', string(outputs('Compose_Resolved_Current_OSS_Immutable_ID')))"
+                        }
+                      }
+                    },
+                    "expression": {
+                      "and": [
+                        {
+                          "not": {
+                            "equals": [
+                              "@outputs('Compose_Resolved_Current_OSS_Immutable_ID')",
+                              ""
+                            ]
+                          }
+                        }
+                      ]
+                    },
+                    "metadata": {
+                      "operationMetadataId": "2c19baeb-82e0-47bf-b534-414aa72e3b6a"
+                    },
+                    "type": "If"
+                  }
+                }
+              },
+              "expression": {
+                "and": [
+                  {
+                    "greater": [
+                      "@length(body('AWG_-_CON_-_01_Get_Router_Tracking_Item')?['value'])",
+                      0
+                    ]
+                  }
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "f4c1bbab-548c-4911-a3c6-7ff9f5b7f00d"
+              },
+              "type": "If"
+            },
+            "Compose_Correlation_FlowId": {
+              "runAfter": {
+                "DEBUG_-_Current_OSS_Lookup_Summary": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "9b2bfe33-71b5-44e8-9824-60074cedc0e0"
+              },
+              "type": "Compose",
+              "inputs": "@outputs('Compose_FlowId_From_Body')"
+            },
+            "AWG_-_CON_-_01_Get_Client_Folder": {
+              "runAfter": {
+                "Compose_Current_OSS_Conversation_ID_From_Trigger": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "ad1634f3-41ef-4b0f-8bb3-e7f6c9316562"
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "Uri": "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/childFolders?$filter=displayName%20eq%20%27Mar%C3%ADn%2C%20Cristhofer%20-%20AWG%20%2B%20Wakefern%27&$top=1",
+                  "Method": "GET"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "operationId": "HttpRequest",
+                  "connectionName": "shared_office365"
+                }
+              }
+            },
+            "AWG_-_CON_-_01_Get_Email_Route_00_Folder": {
+              "runAfter": {
+                "AWG_-_CON_-_01_Target_Client_Folder_Id": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "54c060b8-a9a8-4c9f-b1b3-5f64f004c5c9"
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "Uri": "@concat('https://graph.microsoft.com/v1.0/me/mailFolders/', encodeUriComponent(outputs('AWG_-_CON_-_01_Target_Client_Folder_Id')), '/childFolders?$filter=displayName%20eq%20%27GENERAL%20-%20Email%20Route%20-%2000%27&$top=1')",
+                  "Method": "GET"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "operationId": "HttpRequest",
+                  "connectionName": "shared_office365"
+                }
+              }
+            },
+            "AWG_-_CON_-_01_Target_Email_Route_00_Folder_Id": {
+              "runAfter": {
+                "AWG_-_CON_-_01_Get_Email_Route_00_Folder": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "9ea45431-1889-47ba-bdac-90a881a8f190"
+              },
+              "type": "Compose",
+              "inputs": "@first(body('AWG_-_CON_-_01_Get_Email_Route_00_Folder')?['value'])?['id']"
+            },
+            "AWG_-_CON_-_01_Target_Client_Folder_Id": {
+              "runAfter": {
+                "AWG_-_CON_-_01_Get_Client_Folder": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "de37f0e8-af88-480a-8b8d-8a152f1de40c"
+              },
+              "type": "Compose",
+              "inputs": "@first(body('AWG_-_CON_-_01_Get_Client_Folder')?['value'])?['id']"
+            },
+            "AWG_-_CON_-_01_Get_AWG_Complete_Folder": {
+              "runAfter": {
+                "AWG_-_CON_-_01_Target_Client_Folder_Id": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "f64961d0-a2ba-42d2-ac01-aeda6efc5774"
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "Uri": "@concat('https://graph.microsoft.com/v1.0/me/mailFolders/', encodeUriComponent(outputs('AWG_-_CON_-_01_Target_Client_Folder_Id')), '/childFolders?$filter=displayName%20eq%20%27AWG%20Complete%27&$top=1')",
+                  "Method": "GET"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "operationId": "HttpRequest",
+                  "connectionName": "shared_office365"
+                }
+              }
+            },
+            "AWG_-_CON_-_01_Target_AWG_Complete_Folder_Id": {
+              "runAfter": {
+                "AWG_-_CON_-_01_Get_AWG_Complete_Folder": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "75429b08-14c6-47c0-a117-01871035396c"
+              },
+              "type": "Compose",
+              "inputs": "@first(body('AWG_-_CON_-_01_Get_AWG_Complete_Folder')?['value'])?['id']"
+            },
+            "AWG_-_CON_-_01_Get_AWG_CON_01_Folder": {
+              "runAfter": {
+                "AWG_-_CON_-_01_Target_AWG_Complete_Folder_Id": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "67b834fe-b591-4349-8e3d-3b9eae61a6bd"
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "Uri": "@concat('https://graph.microsoft.com/v1.0/me/mailFolders/', encodeUriComponent(outputs('AWG_-_CON_-_01_Target_AWG_Complete_Folder_Id')), '/childFolders?$filter=displayName%20eq%20%27AWG%20-%20CON%20-%2001%27&$top=1')",
+                  "Method": "GET"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "operationId": "HttpRequest",
+                  "connectionName": "shared_office365"
+                }
+              }
+            },
+            "AWG_-_CON_-_01_Target_AWG_CON_01_Folder_Id": {
+              "runAfter": {
+                "AWG_-_CON_-_01_Get_AWG_CON_01_Folder": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "90a31c87-ec2e-4106-bbf3-91b5ca2f9e5a"
+              },
+              "type": "Compose",
+              "inputs": "@first(body('AWG_-_CON_-_01_Get_AWG_CON_01_Folder')?['value'])?['id']"
+            },
+            "Compose_Current_OSS_Conversation_ID_From_Trigger": {
+              "runAfter": {
+                "Compose_ProcessType_From_Router_Response": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "51750ce1-7172-4dda-a3c2-5363853e0b50"
+              },
+              "type": "Compose",
+              "inputs": "@coalesce(triggerOutputs()?['body/conversationId'], triggerOutputs()?['body/ConversationId'], '')"
+            },
+            "Compose_Resolved_Current_OSS_Immutable_ID": {
+              "runAfter": {
+                "AWG_-_CON_-_01_Filter_Current_OSS_From_ClientRoot": [
+                  "Succeeded"
+                ],
+                "AWG_-_CON_-_01_Filter_Current_OSS_From_EmailRoute00": [
+                  "Succeeded"
+                ],
+                "AWG_-_CON_-_01_Filter_Current_OSS_From_AWGCON01": [
+                  "Succeeded"
+                ],
+                "AWG_-_CON_-_01_Filter_Current_OSS_From_AWGComplete": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "e7457b54-19c2-472f-9d9d-04938269edfd"
+              },
+              "type": "Compose",
+              "inputs": "@if(greater(length(body('AWG_-_CON_-_01_Filter_Current_OSS_From_ClientRoot')), 0), first(body('AWG_-_CON_-_01_Filter_Current_OSS_From_ClientRoot'))?['id'], if(greater(length(body('AWG_-_CON_-_01_Filter_Current_OSS_From_EmailRoute00')), 0), first(body('AWG_-_CON_-_01_Filter_Current_OSS_From_EmailRoute00'))?['id'], if(greater(length(body('AWG_-_CON_-_01_Filter_Current_OSS_From_AWGCON01')), 0), first(body('AWG_-_CON_-_01_Filter_Current_OSS_From_AWGCON01'))?['id'], if(greater(length(body('AWG_-_CON_-_01_Filter_Current_OSS_From_AWGComplete')), 0), first(body('AWG_-_CON_-_01_Filter_Current_OSS_From_AWGComplete'))?['id'], coalesce(triggerOutputs()?['body/id'],'')))))"
+            },
+            "AWG_-_CON_-_01_HTTP_List_ClientRoot_For_Current_OSS": {
+              "runAfter": {
+                "AWG_-_CON_-_01_Target_Client_Folder_Id": [
+                  "Succeeded"
+                ],
+                "Compose_Current_OSS_Conversation_ID_From_Trigger": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "12ced1fe-fb34-491d-b228-3e2597b9ee3c"
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "Uri": "@concat('https://graph.microsoft.com/v1.0/me/mailFolders/', encodeUriComponent(outputs('AWG_-_CON_-_01_Target_Client_Folder_Id')), '/messages?$top=100&$select=id,subject,from,conversationId,parentFolderId,receivedDateTime,isRead,categories')",
+                  "Method": "GET",
+                  "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                  "ContentType": "application/json"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "operationId": "HttpRequest",
+                  "connectionName": "shared_office365"
+                }
+              }
+            },
+            "AWG_-_CON_-_01_Filter_Current_OSS_From_ClientRoot": {
+              "runAfter": {
+                "AWG_-_CON_-_01_HTTP_List_ClientRoot_For_Current_OSS": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "d8b0c0ab-e631-4367-8365-f7dcf81e9dd5"
+              },
+              "type": "Query",
+              "inputs": {
+                "from": "@body('AWG_-_CON_-_01_HTTP_List_ClientRoot_For_Current_OSS')?['value']",
+                "where": "@and(equals(item()?['conversationId'], outputs('Compose_Current_OSS_Conversation_ID_From_Trigger')), equals(toLower(item()?['from']?['emailAddress']?['address']), 'ossgenai.im@pg.com'))"
+              }
+            },
+            "AWG_-_CON_-_01_HTTP_List_EmailRoute00_For_Current_OSS": {
+              "runAfter": {
+                "AWG_-_CON_-_01_Target_Email_Route_00_Folder_Id": [
+                  "Succeeded"
+                ],
+                "Compose_Current_OSS_Conversation_ID_From_Trigger": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "a0c3cda8-7ca3-4ce4-a3cb-87a340e5ab56"
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "Uri": "@concat('https://graph.microsoft.com/v1.0/me/mailFolders/', encodeUriComponent(outputs('AWG_-_CON_-_01_Target_Email_Route_00_Folder_Id')), '/messages?$top=100&$select=id,subject,from,conversationId,parentFolderId,receivedDateTime,isRead,categories')",
+                  "Method": "GET",
+                  "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                  "ContentType": "application/json"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "operationId": "HttpRequest",
+                  "connectionName": "shared_office365"
+                }
+              }
+            },
+            "AWG_-_CON_-_01_Filter_Current_OSS_From_EmailRoute00": {
+              "runAfter": {
+                "AWG_-_CON_-_01_HTTP_List_EmailRoute00_For_Current_OSS": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "048a9e98-c3ff-49ad-bc09-5721a3432814"
+              },
+              "type": "Query",
+              "inputs": {
+                "from": "@body('AWG_-_CON_-_01_HTTP_List_EmailRoute00_For_Current_OSS')?['value']",
+                "where": "@and(equals(item()?['conversationId'], outputs('Compose_Current_OSS_Conversation_ID_From_Trigger')), equals(toLower(item()?['from']?['emailAddress']?['address']), 'ossgenai.im@pg.com'))"
+              }
+            },
+            "AWG_-_CON_-_01_HTTP_List_AWGComplete_For_Current_OSS": {
+              "runAfter": {
+                "AWG_-_CON_-_01_Target_AWG_Complete_Folder_Id": [
+                  "Succeeded"
+                ],
+                "Compose_Current_OSS_Conversation_ID_From_Trigger": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "86609dc0-6586-43d7-887a-81262f9493b9"
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "Uri": "@concat('https://graph.microsoft.com/v1.0/me/mailFolders/', encodeUriComponent(outputs('AWG_-_CON_-_01_Target_AWG_Complete_Folder_Id')), '/messages?$top=100&$select=id,subject,from,conversationId,parentFolderId,receivedDateTime,isRead,categories')",
+                  "Method": "GET",
+                  "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                  "ContentType": "application/json"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "operationId": "HttpRequest",
+                  "connectionName": "shared_office365"
+                }
+              }
+            },
+            "AWG_-_CON_-_01_Filter_Current_OSS_From_AWGComplete": {
+              "runAfter": {
+                "AWG_-_CON_-_01_HTTP_List_AWGComplete_For_Current_OSS": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "f23e269e-fa40-4499-928f-79e467b4b2df"
+              },
+              "type": "Query",
+              "inputs": {
+                "from": "@body('AWG_-_CON_-_01_HTTP_List_AWGComplete_For_Current_OSS')?['value']",
+                "where": "@and(equals(item()?['conversationId'], outputs('Compose_Current_OSS_Conversation_ID_From_Trigger')), equals(toLower(item()?['from']?['emailAddress']?['address']), 'ossgenai.im@pg.com'))"
+              }
+            },
+            "AWG_-_CON_-_01_HTTP_List_AWGCON01_For_Current_OSS": {
+              "runAfter": {
+                "AWG_-_CON_-_01_Target_AWG_CON_01_Folder_Id": [
+                  "Succeeded"
+                ],
+                "Compose_Current_OSS_Conversation_ID_From_Trigger": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "44504b6a-51e0-4523-8302-b6d13d67d603"
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "Uri": "@concat('https://graph.microsoft.com/v1.0/me/mailFolders/', encodeUriComponent(outputs('AWG_-_CON_-_01_Target_AWG_CON_01_Folder_Id')), '/messages?$top=100&$select=id,subject,from,conversationId,parentFolderId,receivedDateTime,isRead,categories')",
+                  "Method": "GET",
+                  "CustomHeader1": "Prefer: IdType=\"ImmutableId\"",
+                  "ContentType": "application/json"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "operationId": "HttpRequest",
+                  "connectionName": "shared_office365"
+                }
+              }
+            },
+            "AWG_-_CON_-_01_Filter_Current_OSS_From_AWGCON01": {
+              "runAfter": {
+                "AWG_-_CON_-_01_HTTP_List_AWGCON01_For_Current_OSS": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "3821f26f-13c8-4533-b22c-e27b62aba08d"
+              },
+              "type": "Query",
+              "inputs": {
+                "from": "@body('AWG_-_CON_-_01_HTTP_List_AWGCON01_For_Current_OSS')?['value']",
+                "where": "@and(equals(item()?['conversationId'], outputs('Compose_Current_OSS_Conversation_ID_From_Trigger')), equals(toLower(item()?['from']?['emailAddress']?['address']), 'ossgenai.im@pg.com'))"
+              }
+            },
+            "DEBUG_-_Current_OSS_Lookup_Summary": {
+              "runAfter": {
+                "Compose_Resolved_Current_OSS_Immutable_ID": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "4fdfbad2-ec5a-4534-920e-6f9438c4c150"
+              },
+              "type": "Compose",
+              "inputs": "@concat('FlowId=', string(outputs('Compose_FlowId_From_Body')), ' | ProcessType=', string(outputs('Compose_ProcessType_From_Router_Response')), ' | TriggerId=', string(coalesce(triggerOutputs()?['body/id'], triggerOutputs()?['body/Id'], '')), ' | TriggerConversationId=', string(outputs('Compose_Current_OSS_Conversation_ID_From_Trigger')), ' | ClientRootMatches=', string(length(body('AWG_-_CON_-_01_Filter_Current_OSS_From_ClientRoot'))), ' | EmailRoute00Matches=', string(length(body('AWG_-_CON_-_01_Filter_Current_OSS_From_EmailRoute00'))), ' | AWGCON01Matches=', string(length(body('AWG_-_CON_-_01_Filter_Current_OSS_From_AWGCON01'))), ' | AWGCompleteMatches=', string(length(body('AWG_-_CON_-_01_Filter_Current_OSS_From_AWGComplete'))), ' | ResolvedCurrentOSSId=', string(outputs('Compose_Resolved_Current_OSS_Immutable_ID')) )"
+            },
+            "DEBUG_-_Current_OSS_ClientRoot_Matches": {
+              "runAfter": {
+                "Compose_Resolved_Current_OSS_Immutable_ID": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "5ac5ae08-aa0e-47af-8d99-2942ef665f6a"
+              },
+              "type": "Compose",
+              "inputs": "@body('AWG_-_CON_-_01_Filter_Current_OSS_From_ClientRoot')"
+            },
+            "DEBUG_-_Current_OSS_EmailRoute00_Matches": {
+              "runAfter": {
+                "Compose_Resolved_Current_OSS_Immutable_ID": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "b7001344-6d2a-41b2-b83c-b796b2d46296"
+              },
+              "type": "Compose",
+              "inputs": "@body('AWG_-_CON_-_01_Filter_Current_OSS_From_EmailRoute00')"
+            },
+            "DEBUG_-_Current_OSS_AWGCON01_Matches": {
+              "runAfter": {
+                "Compose_Resolved_Current_OSS_Immutable_ID": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "9432dd6d-5199-429d-8a95-4b10a168ee52"
+              },
+              "type": "Compose",
+              "inputs": "@body('AWG_-_CON_-_01_Filter_Current_OSS_From_AWGCON01')"
+            },
+            "DEBUG_-_Current_OSS_AWGComplete_Matches": {
+              "runAfter": {
+                "Compose_Resolved_Current_OSS_Immutable_ID": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "f6da13c4-e6b1-4053-b4f7-037cd5ffdfdd"
+              },
+              "type": "Compose",
+              "inputs": "@body('AWG_-_CON_-_01_Filter_Current_OSS_From_AWGComplete')"
+            },
+            "Compose_AI_Answer_Only": {
+              "runAfter": {
+                "Compose_FlowId_From_Body": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "4defd9dc-c25b-4136-b505-a1cb56c3876d"
+              },
+              "type": "Compose",
+              "inputs": "@trim(first(split(last(split(coalesce(triggerOutputs()?['body/body'], ''), '<h2>Answer</h2><p>')), '</p>')))"
+            },
+            "Compose_AI_Response_Is_Valid": {
+              "runAfter": {
+                "Compose_AI_Answer_Only": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "2962cfdb-1a89-4d02-a76b-ef46075371c6"
+              },
+              "type": "Compose",
+              "inputs": "@and(contains(coalesce(triggerOutputs()?['body/body'], ''), '<h2>Answer</h2><p>'), greater(length(outputs('Compose_AI_Answer_Only')), 0))"
+            }
+          },
+          "runAfter": {
+            "Compose_SenderEmail": [
+              "Succeeded"
+            ]
+          },
+          "else": {
+            "actions": {}
+          },
+          "expression": {
+            "and": [
+              {
+                "equals": [
+                  "@outputs('Compose_SenderEmail')",
+                  "ossgenai.im@pg.com"
+                ]
+              }
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "ac62961c-4290-40c5-8f3e-acbbd3a14847"
+          },
+          "type": "If"
+        },
+        "Initialize_variable": {
+          "runAfter": {},
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "SignatureHtml",
+                "type": "string",
+                "value": "<br>Regards,<br><table cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"border-collapse:collapse;\"><tr><td style=\"padding:0 14px 0 0;vertical-align:middle;\"><img src=\"data:image/png;base64,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\" width=\"120\" height=\"61\" alt=\"P&amp;G\" style=\"display:block;border:0;\" /></td><td style=\"vertical-align:middle;font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:16pt;color:#000000;\">Cristhofer Mar&iacute;n Quir&oacute;s<br>pgcustservw2.im@pg.com<br>F&amp;A | NA Order Management Analyst | Regional Sales to Cash</td></tr></table><br>"
+              }
+            ]
+          }
+        }
+      },
+      "outputs": {}
+    },
+    "templateName": null
+  },
+  "schemaVersion": "1.0.0.0"
+}
