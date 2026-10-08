@@ -359,6 +359,20 @@ def add_flow05_approvals(actions, used):
         used.update([n_dest, n_check, n_get, n_req, n_guard] + list(inner.keys()) + list(inner[n_guard]['else']['actions'].keys()))
 
 
+# ---------------------------------------------------------------- flow 00: 24h guard after the business-hours wait
+def fix_flow00_only_new_email(actions):
+    """Guard_Only_New_Email skips e-mails received more than 24h before *now*, but it runs after
+    'Esperar horario laboral', which can hold the run up to ~62h (Friday after 3pm -> Monday 5am).
+    Measure the 24h against the moment the trigger fired instead, so the weekend wait does not
+    turn every pending e-mail into an 'old' one that is silently skipped."""
+    c = find(actions, 'GENERAL_-_00_Guard_Only_New_Email')
+    g = c['GENERAL_-_00_Guard_Only_New_Email']
+    s = json.dumps(g['expression'])
+    old = "@ticks(addMinutes(utcNow(), -1440))"
+    assert s.count(old) == 1, s
+    g['expression'] = json.loads(s.replace(old, "@ticks(addMinutes(trigger()?['startTime'], -1440))"))
+
+
 # ---------------------------------------------------------------- try / catch
 def wrap_try_catch(df, extra_vars):
     acts = df['actions']
@@ -454,6 +468,9 @@ def process_flow(path):
     fname = os.path.basename(path)
     tag = tag_of(fname)
     used = set(all_names(df['actions']))
+
+    if fname.startswith('GENERAL-Classifier-00'):
+        fix_flow00_only_new_email(df['actions'])
 
     if fname.startswith('AWG-Consolidation-05'):
         add_flow05_approvals(df['actions'], used)

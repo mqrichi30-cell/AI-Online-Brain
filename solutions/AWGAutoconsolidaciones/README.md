@@ -19,6 +19,7 @@ Cada copia viene en versión `managed` y `unmanaged`. El contenido es el mismo; 
   - **Nuevo en el flujo 05:** si la fila de tracking no tiene `OriginalMessageId`, la respuesta usa el correo actual, que viene de OSSGenAI. Antes de cada una de las 2 respuestas, el flujo revisa a quién va a llegar (from / replyTo / CC). Si incluye OSSGenAI, pide aprobación. Si se rechaza o no hay respuesta en 24 h, no se envía nada, el correo vuelve a no leído y el flujo termina como Cancelled.
   - Al rechazar, el flujo termina como `Cancelled` y no como error, así que el Catch no se dispara.
 - La versión pasa a 1.0.0.38.
+- **Corrección en el flujo 00:** `GENERAL_-_00_Guard_Only_New_Email` descartaba los correos recibidos hace más de 24 h contando desde *ahora*. Pero se evalúa después de `Esperar horario laboral`, que puede retener la corrida hasta ~62 h (viernes después de las 3 pm hasta el lunes a las 5 am). Por eso los correos del fin de semana se saltaban sin hacer nada. Ahora las 24 h se cuentan desde que se disparó el trigger (`trigger()?['startTime']`).
 
 ## Cambios solo en la copia SMTP
 
