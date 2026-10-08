@@ -7,6 +7,8 @@ Dos copias de la solución `AWGAutoconsolidaciones_1_0_0_37_managed.zip`:
 | `AWGAutoconsolidaciones_1_0_0_38_managed_Outlook.zip` | Igual que antes (Office 365 Outlook) | Outlook "Enviar correo con opciones" (Aprobar / Rechazar) |
 | `AWGAutoconsolidaciones_1_0_0_38_managed_SMTP_Produccion.zip` | **SMTP** (`Send Email (V3)`) | Conector **Aprobaciones** ("Iniciar y esperar una aprobación", Approve / Reject) |
 
+Cada copia viene en versión `managed` y `unmanaged`. El contenido es el mismo; solo cambia `<Managed>` en `solution.xml`. Hay que importar la versión que coincida con cómo está instalada la solución en el entorno. Si ya está como no administrada (por ejemplo en *Personal Productivity (default)*), usa `unmanaged`. Si no, aparece el error *"The solution is already installed on this system as an unmanaged solution…"*.
+
 ## Cambios en los 6 flujos (las dos copias)
 
 - Se usa la estructura de `TryandCatchExample`:
