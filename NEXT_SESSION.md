@@ -33,9 +33,15 @@ Pendientes para retomar en la próxima sesión.
 - [ ] Pedirla al crear la cuenta (desde el link de invitación) y permitir cambiarla después en su perfil.
 
 ### Rutinas escritas como nota (con la API de Claude)
-- [ ] El sensei **escribe la rutina libremente, como una nota** (como lo hacía antes).
-- [ ] Claude **lee la nota y arma la rutina** con el formato de la app (ejercicios, series, repeticiones, tiempos, etc.).
-- [ ] El sensei **revisa y corrige** la rutina generada antes de guardarla.
+- [ ] **Cualquier entrenador** (no solo el sensei) puede crear o editar rutinas.
+- [ ] Hay dos formas de editar una rutina:
+  1. **Manual:** desde **"Editar ejercicio"** (lo que ya existe).
+  2. **Con una nota:** el entrenador escribe libremente y Claude la interpreta.
+- [ ] **Antes de escribir la nota**, el entrenador debe **elegir una opción** (obligatorio):
+  - **Construir rutina nueva:** Claude arma la rutina completa a partir de la nota.
+  - **Editar parcialmente:** se elige una rutina existente y Claude aplica **solo los cambios** de la nota (agregar, quitar o modificar ejercicios), sin tocar el resto.
+- [ ] Claude devuelve la rutina en el formato de la app (ejercicios, series, repeticiones, tiempos, etc.).
+- [ ] El entrenador **revisa y corrige** el resultado antes de guardar. En la edición parcial, mostrar **qué cambió** respecto a la rutina original.
 - [ ] Después sigue el flujo que ya existe: elegir **asignar a todos / a algunos**, **fecha** y lo demás que ya pide la app.
 - [ ] Técnico:
   - La **API key de Claude va solo en el servidor** (variable de entorno, ej. `ANTHROPIC_API_KEY` en Vercel), **nunca en el frontend** ni en el repo.
