@@ -1,0 +1,6 @@
+__pycache__/
+.pytest_cache/
+knime/config/config.json
+*.sqlite
+browser_profile/
+downloads/

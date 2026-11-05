@@ -1,0 +1,52 @@
+{
+  "_comentario": "Copia este archivo como config.json (NO lo subas a git). Los secretos van como credenciales de KNIME o variables de entorno, no aquí.",
+
+  "state_db": "C:/KNIME_Robot/nova_sap/state.sqlite",
+
+  "nova": {
+    "url": "https://retaillink2.wal-mart.com/novarl/",
+    "mode": "export",
+    "browser_profile_dir": "C:/KNIME_Robot/nova_sap/browser_profile",
+    "download_dir": "C:/KNIME_Robot/nova_sap/downloads",
+    "browser_channel": "msedge",
+    "timeout_ms": 90000,
+    "po_column": "PO Number",
+    "pre_steps": [
+      {"action": "wait", "selector": "text=Purchase Orders"},
+      {"action": "_ejemplo_click_filtro_hoy", "selector": "button:has-text('Today')"}
+    ],
+    "selectors": {
+      "ready": "table",
+      "export_button": "button:has-text('Export')",
+      "table": "table",
+      "header_cells": "thead th",
+      "body_rows": "tbody tr",
+      "next_page": "button[aria-label='Next page']"
+    },
+    "max_pages": 200
+  },
+
+  "sap": {
+    "_comentario": "El nodo SAP (Theobald SAP Reader, DB Query a HANA, o un Excel exportado de VA05) entra al nodo de match. Aquí sólo se indica qué columna trae la PO del cliente (VBKD-BSTKD / VBAK-BSTNK).",
+    "po_column": "BSTKD"
+  },
+
+  "matching": {
+    "strip_leading_zeros": true,
+    "allow_empty_nova": false,
+    "fire_once_per_day": true,
+    "timezone": "America/Mexico_City"
+  },
+
+  "outlook": {
+    "tenant_id_env": "NOVA_SAP_TENANT_ID",
+    "client_id_env": "NOVA_SAP_CLIENT_ID",
+    "client_secret_env": "NOVA_SAP_CLIENT_SECRET",
+    "sender_mailbox": "reportes.walmart@tuempresa.com",
+    "approvals_mailbox": "aprobaciones.walmart@tuempresa.com",
+    "expires_hours": 8,
+    "delegates": {
+      "oma.titular@tuempresa.com": ["oma.backup@tuempresa.com"]
+    }
+  }
+}
