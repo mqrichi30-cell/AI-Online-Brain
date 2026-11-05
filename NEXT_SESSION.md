@@ -32,4 +32,14 @@ Pendientes para retomar en la próxima sesión.
 - [ ] Pedirle al atleta que suba una **foto tipo pasaporte** (de frente, fondo claro, solo rostro y hombros).
 - [ ] Pedirla al crear la cuenta (desde el link de invitación) y permitir cambiarla después en su perfil.
 
+### Rutinas escritas como nota (con la API de Claude)
+- [ ] El sensei **escribe la rutina libremente, como una nota** (como lo hacía antes).
+- [ ] Claude **lee la nota y arma la rutina** con el formato de la app (ejercicios, series, repeticiones, tiempos, etc.).
+- [ ] El sensei **revisa y corrige** la rutina generada antes de guardarla.
+- [ ] Después sigue el flujo que ya existe: elegir **asignar a todos / a algunos**, **fecha** y lo demás que ya pide la app.
+- [ ] Técnico:
+  - La **API key de Claude va solo en el servidor** (variable de entorno, ej. `ANTHROPIC_API_KEY` en Vercel), **nunca en el frontend** ni en el repo.
+  - Usar **salida estructurada (JSON)** que coincida con el modelo de datos de rutina de la app.
+  - Manejar errores (nota vacía, texto que no se entiende) con un mensaje claro y la opción de crear la rutina a mano.
+
 _Anotado: 2026-11-05_
