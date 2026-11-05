@@ -59,3 +59,35 @@ def test_node_not_fired(tmp_path):
     assert io.flow_variables["PortChoice"] == "bottom"
     detail = io.output_tables[1].df
     assert detail.loc[detail.po == "3", "estatus"].item() == "SOLO_NOVA"
+
+
+def test_node_autodetects_po_columns_and_uses_data_area(tmp_path):
+    import shutil
+    data = tmp_path / "data"
+    shutil.copytree(ROOT / "knime" / "lib", data / "lib")
+    (data / "config.json").write_text(json.dumps({"state_db": "state.sqlite", "sap": {},
+                                                  "matching": {"fire_once_per_day": False}}))
+    io = fake_knio([pd.DataFrame({"PO Number": ["1", "2"], "DC": ["a", "b"]}),
+                    pd.DataFrame({"Material": ["x", "y"], "BSTKD": ["0002", "1"]})], {})
+    io.get_workflow_data_area_dir = lambda: str(data)
+    runpy.run_path(str(ROOT / "knime" / "nodes" / "02_match_trigger.py"))
+    s = io.output_tables[0].df.iloc[0]
+    assert (s["nova_po_column"], s["sap_po_column"]) == ("PO Number", "BSTKD")
+    assert io.flow_variables["trigger_fired"] == 1
+    assert (data / "state.sqlite").exists()
+
+
+def test_build_workflow_package(tmp_path):
+    import zipfile
+    import xml.dom.minidom
+    sys.path.insert(0, str(ROOT / "knime" / "workflows"))
+    import build_workflow
+    wf = build_workflow.build(tmp_path / "build")
+    for f in wf.rglob("*.xml"):
+        xml.dom.minidom.parse(str(f))
+    xml.dom.minidom.parse(str(wf / "workflow.knime"))
+    knwf = build_workflow.pack(wf, tmp_path / "x.knwf")
+    names = zipfile.ZipFile(knwf).namelist()
+    assert "NOVA_SAP_Trigger/workflow.knime" in names
+    assert "NOVA_SAP_Trigger/data/lib/nova_sap/po_matching.py" in names
+    assert "NOVA_SAP_Trigger/Python Script (#3)/settings.xml" in names

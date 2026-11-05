@@ -11,6 +11,16 @@ Workflows de **KNIME** que:
    como solicitud de aprobación en Outlook (con el correo final adjunto, editable).
    El OMA puede **aprobar**, **editar** o **rechazar**; sólo lo aprobado se envía.
 
+### ⚡ Inicio rápido (workflow listo para importar)
+
+1. Descarga [`dist/NOVA_SAP_Trigger.knwf`](dist/NOVA_SAP_Trigger.knwf).
+2. KNIME → **⋮ Menu → Import workflow…** → elige el archivo.
+3. **Execute all**: corre con dos Excel de ejemplo que vienen adentro.
+4. Doble clic en cada **Excel Reader** → elige tu export de NOVA y de SAP → **Execute all**.
+
+La columna de PO se detecta sola. Requiere KNIME 5.2+ con *KNIME Python Integration*.
+Se regenera con `python knime/workflows/build_workflow.py` (probado en KNIME 5.12).
+
 📘 Guía completa (arquitectura, armado nodo por nodo, Outlook/Azure, programación):
 [`docs/guia_knime.md`](docs/guia_knime.md)
 
