@@ -4,6 +4,9 @@ Pendientes para retomar en la próxima sesión.
 
 ## App Judo Hatillo
 
+### 🐞 Bugs
+- [ ] **"Ver contraseña" no funciona**: el botón/ícono para mostrar la contraseña no la muestra. Revisar en login y registro (y en el link de invitación si tiene campo de contraseña). Probar en celular y en escritorio.
+
 ### Cuota mensual del sensei
 - [ ] **Verificar primero** si esto ya existe en la app (no estamos seguros de si ya es posible).
 - [ ] Al **crear la cuenta**, el sensei debe indicar **cuánto cobra por mes** (campo obligatorio en el registro).
