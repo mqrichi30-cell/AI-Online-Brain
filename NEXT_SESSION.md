@@ -28,4 +28,8 @@ Pendientes para retomar en la próxima sesión.
 - [ ] El sensei puede **agregar atletas con su correo**.
 - [ ] Al agregarlo, se le **envía un link** al atleta para que **cree su cuenta**.
 
+### Foto del atleta
+- [ ] Pedirle al atleta que suba una **foto tipo pasaporte** (de frente, fondo claro, solo rostro y hombros).
+- [ ] Pedirla al crear la cuenta (desde el link de invitación) y permitir cambiarla después en su perfil.
+
 _Anotado: 2026-11-05_
