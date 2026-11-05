@@ -34,9 +34,9 @@ Pendientes para retomar en la próxima sesión.
 
 ### Rutinas escritas como nota (con la API de Claude)
 - [ ] **Cualquier entrenador** (no solo el sensei) puede crear o editar rutinas.
-- [ ] Hay dos formas de editar una rutina:
-  1. **Manual:** desde **"Editar ejercicio"** (lo que ya existe).
-  2. **Con una nota:** el entrenador escribe libremente y Claude la interpreta.
+- [ ] Hay dos formas de **crear o editar** una rutina; la IA es **opcional**:
+  1. **Manual (sin IA):** el entrenador **busca los ejercicios** y arma la rutina él mismo, o edita desde **"Editar ejercicio"** (lo que ya existe).
+  2. **Con una nota (IA):** el entrenador escribe libremente y Claude la interpreta.
 - [ ] **Antes de escribir la nota**, el entrenador debe **elegir una opción** (obligatorio):
   - **Construir rutina nueva:** Claude arma la rutina completa a partir de la nota.
   - **Editar parcialmente:** se elige una rutina existente y Claude aplica **solo los cambios** de la nota (agregar, quitar o modificar ejercicios), sin tocar el resto.
