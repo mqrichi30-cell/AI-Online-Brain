@@ -121,6 +121,42 @@ def cuerpo_machote(eml_b64: str | None) -> str | None:
     return contenido
 
 
+def cuerpo_desde_texto(texto: str | None) -> str | None:
+    """Cuerpo escrito en Excel -> HTML con el estilo de Outlook.
+    Reglas: cada linea = parrafo; '- ' = vineta; **negrita**; [rojo]texto[/rojo];
+    un marcador solo en su linea (p.ej. {TABLA_PIVOT}) se inserta tal cual."""
+    if not texto or not str(texto).strip():
+        return None
+
+    def inline(t: str) -> str:
+        t = _html.escape(t, quote=False)
+        t = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", t)
+        t = re.sub(r"\[rojo\](.+?)\[/rojo\]", r"<span style='color:red;font-weight:bold'>\1</span>", t, flags=re.I)
+        return t
+
+    partes, lista = [], []
+
+    def cerrar_lista():
+        if lista:
+            partes.append("<ul style='margin:0 0 10px 0'>" + "".join(f"<li>{x}</li>" for x in lista) + "</ul>")
+            lista.clear()
+
+    for linea in str(texto).replace("\r\n", "\n").split("\n"):
+        l = linea.strip()
+        if l.startswith("- "):
+            lista.append(inline(l[2:]))
+            continue
+        cerrar_lista()
+        if not l:
+            continue
+        if re.fullmatch(r"\{[A-Z][A-Z0-9_]*\}", l):
+            partes.append(l)
+        else:
+            partes.append(f"<p style='margin:0 0 10px 0'>{inline(l)}</p>")
+    cerrar_lista()
+    return "<div style='font-family:Calibri,Arial;font-size:11pt;color:#000'>" + "".join(partes) + "</div>"
+
+
 def cuerpo_por_defecto(bloques: dict[str, str]) -> str:
     partes = ["<div style='font-family:Calibri,Arial;font-size:11pt'><p>Hi Team,</p>"]
     partes += [v for v in bloques.values() if v]
@@ -150,7 +186,7 @@ def construir_correos(sol: dict, datos: dict[str, pd.DataFrame] | None = None) -
     if datos is None:
         datos = datos_prueba(reporte)
     prueba = bool(sol.get("modo_prueba"))
-    machote = cuerpo_machote(sol.get("machote_eml_base64"))
+    machote = cuerpo_desde_texto(sol.get("cuerpo_texto")) or cuerpo_machote(sol.get("machote_eml_base64"))
     asunto_fmt = sol.get("asunto_formato") or (reporte + " {FECHA:MM.dd.yyyy}")
     etiqueta = "[PRUEBA] " if prueba else ""
     fecha_txt = fecha.strftime("%m.%d.%Y")
@@ -282,6 +318,7 @@ def responder(sol: dict, datos: dict[str, pd.DataFrame] | None = None) -> dict:
         if cfg:
             pl = _fila(cfg, "Plantillas", sol.get("reporte", ""))
             sol = {**sol, "asunto_formato": sol.get("asunto_formato") or pl.get("Asunto (formato exacto)", ""),
+                   "cuerpo_texto": sol.get("cuerpo_texto") or pl.get("Cuerpo del correo", ""),
                    "modo_prueba": _si(cfg["_general"].get("Modo prueba", "Si"))}
         correos = construir_correos(sol, datos)
         return {"ok": True, "error": "", "correos": resolver(sol, cfg, correos)}

@@ -111,3 +111,15 @@ def test_marcadores_sin_datos_quedan_none_o_vacios():
     from nova_sap.wmt_reportes import limpiar_marcadores
     assert limpiar_marcadores("<p>XT:</p>{TABLA_XT}{ALERTA_09}<style>p {color:red}</style>") == \
         "<p>XT:</p><p><i>NONE</i></p><style>p {color:red}</style>"
+
+
+def test_cuerpo_desde_texto_excel():
+    from nova_sap.wmt_reportes import cuerpo_desde_texto
+    h = cuerpo_desde_texto("Hello Team,\nWe had Rounding today on [rojo]Insert Categories[/rojo].\n- uno\n- **dos**\n{TABLA_PIVOT}\nBTD:")
+    assert "<p style='margin:0 0 10px 0'>Hello Team,</p>" in h
+    assert "<span style='color:red;font-weight:bold'>Insert Categories</span>" in h
+    assert "<ul style='margin:0 0 10px 0'><li>uno</li><li><b>dos</b></li></ul>" in h
+    assert "{TABLA_PIVOT}" in h and h.index("{TABLA_PIVOT}") < h.index("BTD:")
+    assert cuerpo_desde_texto("  ") is None
+    r = responder({"reporte": "Line Block", "fecha": "2026-11-07", "cuerpo_texto": "Hi Team,\nLine Blocks:\n{TABLA_PIVOT}\nBTD:"})
+    assert "Line Blocks:" in r["correos"][0]["html"] and "<table" in r["correos"][0]["html"]
