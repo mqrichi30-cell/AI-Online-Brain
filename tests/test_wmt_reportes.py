@@ -105,3 +105,9 @@ def test_bgj_resuelve_oma_por_planta():
     r = responder({"accion": "reporte", "reporte": "BGJs", "fecha": "2026-11-07", "config_xlsx_base64": _cfg_b64("No")})
     tos = sorted((c["to"], c["aprobadores"]) for c in r["correos"])
     assert tos == [("oma1@pg.com", "jefe@pg.com"), ("oma2@pg.com", "jefe@pg.com")]
+
+
+def test_marcadores_sin_datos_quedan_none_o_vacios():
+    from nova_sap.wmt_reportes import limpiar_marcadores
+    assert limpiar_marcadores("<p>XT:</p>{TABLA_XT}{ALERTA_09}<style>p {color:red}</style>") == \
+        "<p>XT:</p><p><i>NONE</i></p><style>p {color:red}</style>"

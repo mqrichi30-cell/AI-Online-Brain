@@ -63,6 +63,14 @@ def aplicar_marcadores(texto: str, fecha: date, turno: str, valores: dict) -> st
     return texto
 
 
+def limpiar_marcadores(texto: str) -> str:
+    """Marcadores sin datos: tablas -> NONE (como la macro), el resto -> vacio."""
+    if not texto:
+        return texto
+    texto = re.sub(r"\{TABLA_[A-Z0-9_]+\}", "<p><i>NONE</i></p>", texto)
+    return re.sub(r"\{[A-Z][A-Z0-9_]*\}", "", texto)
+
+
 # ------------------------------------------------------------------ html / excel
 def tabla_html(df: pd.DataFrame, max_filas: int = 250) -> str:
     if df is None or df.empty:
@@ -152,8 +160,8 @@ def construir_correos(sol: dict, datos: dict[str, pd.DataFrame] | None = None) -
         primera = next(iter(tablas.values()), "")
         valores = {"TABLA_PIVOT": primera, **tablas, **extra}
         cuerpo = machote if machote else cuerpo_por_defecto({"tabla": primera})
-        html = aplicar_marcadores(cuerpo, fecha, turno, valores)
-        asunto = etiqueta + aplicar_marcadores(asunto_fmt, fecha, turno, valores)
+        html = limpiar_marcadores(aplicar_marcadores(cuerpo, fecha, turno, valores))
+        asunto = etiqueta + limpiar_marcadores(aplicar_marcadores(asunto_fmt, fecha, turno, valores))
         filas = sum(len(df) for df in hojas.values())
         return {"asunto": asunto, "html": html, "to": to,
                 "resumen": f"{reporte} ({turno}) - {filas} filas" + (" - DATOS DE PRUEBA" if prueba else ""),
@@ -164,7 +172,9 @@ def construir_correos(sol: dict, datos: dict[str, pd.DataFrame] | None = None) -
         correos = []
         for oma, grupo in df.groupby("OMA", sort=True):
             plantas = ", ".join(sorted(grupo["Plant"].astype(str).unique()))
-            c = un_correo({"Merch": grupo.drop(columns=["OMA"])}, {"PLANTAS": plantas}, to=str(oma))
+            nombre_oma = str(grupo["OMA_Nombre"].iloc[0]) if "OMA_Nombre" in grupo else str(oma)
+            c = un_correo({"Merch": grupo.drop(columns=[x for x in ("OMA", "OMA_Nombre") if x in grupo])},
+                          {"PLANTAS": plantas, "OMA": nombre_oma}, to=str(oma))
             c["plantas"] = plantas
             correos.append(c)
         return correos
