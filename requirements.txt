@@ -1,0 +1,6 @@
+# Entorno Python que usa KNIME (Preferences > KNIME > Python)
+pandas>=2.0
+openpyxl>=3.1
+playwright>=1.45
+msal>=1.28
+requests>=2.31
